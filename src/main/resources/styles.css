@@ -1,0 +1,63 @@
+.root {
+    -fx-font-family: "Avenir Next";
+    -fx-base: #f5f2ed;
+    -fx-background: #f5f2ed;
+}
+
+.screen {
+    -fx-background-color: linear-gradient(to bottom right, #f7f3ee, #efe8df);
+}
+
+.label {
+    -fx-text-fill: #2a2a2a;
+}
+
+.button {
+    -fx-background-color: #2f3a42;
+    -fx-text-fill: #f6f1eb;
+    -fx-background-radius: 8;
+    -fx-padding: 6 14 6 14;
+}
+
+.button:hover {
+    -fx-background-color: #3b4a53;
+}
+
+.text-field, .password-field {
+    -fx-background-color: #ffffff;
+    -fx-background-radius: 6;
+    -fx-border-color: #c7bfb5;
+    -fx-border-radius: 6;
+    -fx-padding: 6 8 6 8;
+}
+
+.list-view {
+    -fx-background-color: #ffffff;
+    -fx-background-radius: 8;
+    -fx-border-color: #d6cec5;
+    -fx-border-radius: 8;
+}
+
+.tab-pane .tab-header-area {
+    -fx-background-color: transparent;
+}
+
+.tab-pane .tab {
+    -fx-background-color: #e4dbd1;
+    -fx-background-radius: 10 10 0 0;
+    -fx-padding: 6 12 6 12;
+}
+
+.tab-pane .tab:selected {
+    -fx-background-color: #2f3a42;
+}
+
+.tab-pane .tab:selected .tab-label {
+    -fx-text-fill: #f6f1eb;
+}
+
+.section-title {
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #2f3a42;
+}

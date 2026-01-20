@@ -1,0 +1,17 @@
+# Maven
+target/
+.deps/
+
+# Local Maven repo used by build
+.m2repo/
+
+# SQLite DB
+smart_booking.db
+
+# OS
+.DS_Store
+
+# IDE
+.idea/
+*.iml
+.vscode/
