@@ -15,7 +15,9 @@ import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
+import java.util.stream.IntStream;
 
 public class FxApp extends Application {
     private static AppServices services;
@@ -130,22 +132,56 @@ public class FxApp extends Application {
     }
 
     private VBox createBookingPane() {
-        TextField resourceId = new TextField();
-        TextField start = new TextField();
-        TextField end = new TextField();
+        ComboBox<Resource> resourceBox = new ComboBox<>();
+        DatePicker datePicker = new DatePicker();
+        ComboBox<LocalTime> startTime = new ComboBox<>();
+        ComboBox<LocalTime> endTime = new ComboBox<>();
         Label status = new Label();
         Button create = new Button("Create Booking");
+        Button refresh = new Button("Refresh Resources");
 
-        start.setPromptText("yyyy-MM-dd HH:mm");
-        end.setPromptText("yyyy-MM-dd HH:mm");
+        resourceBox.setItems(FXCollections.observableArrayList(services.getResourceService().listResources()));
+        resourceBox.setPromptText("Select a room");
+        resourceBox.setCellFactory(list -> new ListCell<>() {
+            @Override
+            protected void updateItem(Resource item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                } else {
+                    setText(item.getName() + " (" + item.getType() + ") - $" + String.format("%.2f", item.getBasePricePerHour()) + "/hr");
+                }
+            }
+        });
+        resourceBox.setButtonCell(resourceBox.getCellFactory().call(null));
+
+        startTime.setItems(buildTimeOptions());
+        endTime.setItems(buildTimeOptions());
+        startTime.setPromptText("Start");
+        endTime.setPromptText("End");
+
+        refresh.setOnAction(event -> resourceBox.setItems(FXCollections.observableArrayList(
+                services.getResourceService().listResources()
+        )));
 
         create.setOnAction(event -> {
             try {
-                long id = Long.parseLong(resourceId.getText().trim());
-                LocalDateTime startTime = DateTimeUtil.parse(start.getText().trim());
-                LocalDateTime endTime = DateTimeUtil.parse(end.getText().trim());
-                Booking booking = services.getBookingService().createBooking(currentUser.getId(), id, new Timeslot(startTime, endTime));
-                status.setText("Created booking " + booking.getId() + " status " + booking.getStatus() + " price $" + String.format("%.2f", booking.getPrice()));
+                Resource resource = resourceBox.getValue();
+                if (resource == null) {
+                    throw new IllegalArgumentException("Select a room");
+                }
+                if (datePicker.getValue() == null || startTime.getValue() == null || endTime.getValue() == null) {
+                    throw new IllegalArgumentException("Pick date and time");
+                }
+                LocalDateTime startDateTime = LocalDateTime.of(datePicker.getValue(), startTime.getValue());
+                LocalDateTime endDateTime = LocalDateTime.of(datePicker.getValue(), endTime.getValue());
+                Booking booking = services.getBookingService().createBooking(
+                        currentUser.getId(),
+                        resource.getId(),
+                        new Timeslot(startDateTime, endDateTime)
+                );
+                status.setText("Created booking " + booking.getId() + " status " + booking.getStatus()
+                        + " price $" + String.format("%.2f", booking.getPrice()));
             } catch (Exception ex) {
                 status.setText("Create failed: " + ex.getMessage());
             }
@@ -154,9 +190,9 @@ public class FxApp extends Application {
         GridPane grid = new GridPane();
         grid.setHgap(10);
         grid.setVgap(10);
-        grid.addRow(0, new Label("Resource ID:"), resourceId);
-        grid.addRow(1, new Label("Start:"), start);
-        grid.addRow(2, new Label("End:"), end);
+        grid.addRow(0, new Label("Room:"), resourceBox, refresh);
+        grid.addRow(1, new Label("Date:"), datePicker);
+        grid.addRow(2, new Label("Time:"), new HBox(10, startTime, endTime));
         grid.add(create, 1, 3);
 
         VBox root = new VBox(10, header("Create a Booking"), grid, status);
@@ -310,6 +346,12 @@ public class FxApp extends Application {
         List<AuditLog> logs = services.getAuditService().listLogs();
         return FXCollections.observableArrayList(logs.stream()
                 .map(log -> DateTimeUtil.format(log.getCreatedAt()) + " | User " + log.getUserId() + " | " + log.getAction() + " | " + log.getDetails())
+                .toList());
+    }
+
+    private ObservableList<LocalTime> buildTimeOptions() {
+        return FXCollections.observableArrayList(IntStream.range(8, 22)
+                .mapToObj(hour -> LocalTime.of(hour, 0))
                 .toList());
     }
 }
