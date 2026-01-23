@@ -26,13 +26,13 @@ public class BookingService {
     private final AuditService auditService;
 
     public BookingService(BookingRepository bookingRepository,
-                          ResourceRepository resourceRepository,
-                          PolicyFactory policyFactory,
-                          BookingFactory bookingFactory,
-                          BookingStateFactory stateFactory,
-                          NotificationService notificationService,
-                          PaymentService paymentService,
-                          AuditService auditService) {
+            ResourceRepository resourceRepository,
+            PolicyFactory policyFactory,
+            BookingFactory bookingFactory,
+            BookingStateFactory stateFactory,
+            NotificationService notificationService,
+            PaymentService paymentService,
+            AuditService auditService) {
         this.bookingRepository = bookingRepository;
         this.resourceRepository = resourceRepository;
         this.policyFactory = policyFactory;
@@ -57,7 +57,8 @@ public class BookingService {
         PricingPolicy pricingPolicy = policyFactory.createPricingPolicy(resource.getPricingPolicyKey());
         double price = pricingPolicy.calculatePrice(resource, timeslot, basePrice);
 
-        Booking booking = bookingFactory.create(userId, resourceId, timeslot.getStart(), timeslot.getEnd(), price, BookingStatus.REQUESTED);
+        Booking booking = bookingFactory.create(userId, resourceId, timeslot.getStart(), timeslot.getEnd(), price,
+                BookingStatus.REQUESTED);
         Booking saved = bookingRepository.create(booking);
         saved.addObserver(notificationService);
 
@@ -102,7 +103,8 @@ public class BookingService {
 
         Resource resource = resourceRepository.findById(booking.getResourceId())
                 .orElseThrow(() -> new IllegalArgumentException("Resource not found"));
-        CancellationPolicy cancellationPolicy = policyFactory.createCancellationPolicy(resource.getCancellationPolicyKey());
+        CancellationPolicy cancellationPolicy = policyFactory
+                .createCancellationPolicy(resource.getCancellationPolicyKey());
         long hoursBeforeStart = Duration.between(LocalDateTime.now(), booking.getStartTime()).toHours();
         double refundPercent = cancellationPolicy.refundPercent(hoursBeforeStart);
 
@@ -110,7 +112,8 @@ public class BookingService {
             booking.transitionTo(BookingStatus.REFUNDED, stateFactory);
             bookingRepository.updateStatus(bookingId, booking.getStatus());
             paymentService.recordRefund(bookingId, booking.getPrice() * refundPercent);
-            auditService.log(userId, "BOOKING_REFUNDED", "Booking " + bookingId + " refunded at " + (refundPercent * 100) + "%");
+            auditService.log(userId, "BOOKING_REFUNDED",
+                    "Booking " + bookingId + " refunded at " + (refundPercent * 100) + "%");
         } else {
             auditService.log(userId, "BOOKING_CANCELLED", "Booking " + bookingId + " cancelled");
         }
@@ -122,6 +125,10 @@ public class BookingService {
 
     public List<Booking> listPendingBookings() {
         return bookingRepository.findPendingApproval();
+    }
+
+    public List<Booking> listBookingsForResource(long resourceId, LocalDateTime start, LocalDateTime end) {
+        return bookingRepository.findActiveByResource(resourceId, start, end);
     }
 
     private Booking loadBooking(long bookingId) {

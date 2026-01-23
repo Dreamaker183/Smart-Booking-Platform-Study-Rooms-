@@ -22,7 +22,7 @@ public class BookingRepository {
     public Booking create(Booking booking) {
         String sql = "INSERT INTO bookings (user_id, resource_id, start_time, end_time, price, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)";
         try (Connection connection = database.getConnection();
-             PreparedStatement stmt = connection.prepareStatement(sql, PreparedStatement.RETURN_GENERATED_KEYS)) {
+                PreparedStatement stmt = connection.prepareStatement(sql, PreparedStatement.RETURN_GENERATED_KEYS)) {
             stmt.setLong(1, booking.getUserId());
             stmt.setLong(2, booking.getResourceId());
             stmt.setString(3, booking.getStartTime().toString());
@@ -46,7 +46,7 @@ public class BookingRepository {
     public void updateStatus(long bookingId, BookingStatus status) {
         String sql = "UPDATE bookings SET status = ? WHERE id = ?";
         try (Connection connection = database.getConnection();
-             PreparedStatement stmt = connection.prepareStatement(sql)) {
+                PreparedStatement stmt = connection.prepareStatement(sql)) {
             stmt.setString(1, status.name());
             stmt.setLong(2, bookingId);
             stmt.executeUpdate();
@@ -58,7 +58,7 @@ public class BookingRepository {
     public Optional<Booking> findById(long bookingId) {
         String sql = "SELECT * FROM bookings WHERE id = ?";
         try (Connection connection = database.getConnection();
-             PreparedStatement stmt = connection.prepareStatement(sql)) {
+                PreparedStatement stmt = connection.prepareStatement(sql)) {
             stmt.setLong(1, bookingId);
             ResultSet rs = stmt.executeQuery();
             if (rs.next()) {
@@ -74,7 +74,7 @@ public class BookingRepository {
         String sql = "SELECT * FROM bookings WHERE user_id = ? ORDER BY created_at DESC";
         List<Booking> bookings = new ArrayList<>();
         try (Connection connection = database.getConnection();
-             PreparedStatement stmt = connection.prepareStatement(sql)) {
+                PreparedStatement stmt = connection.prepareStatement(sql)) {
             stmt.setLong(1, userId);
             ResultSet rs = stmt.executeQuery();
             while (rs.next()) {
@@ -90,7 +90,7 @@ public class BookingRepository {
         String sql = "SELECT * FROM bookings WHERE status = ? ORDER BY created_at ASC";
         List<Booking> bookings = new ArrayList<>();
         try (Connection connection = database.getConnection();
-             PreparedStatement stmt = connection.prepareStatement(sql)) {
+                PreparedStatement stmt = connection.prepareStatement(sql)) {
             stmt.setString(1, BookingStatus.REQUESTED.name());
             ResultSet rs = stmt.executeQuery();
             while (rs.next()) {
@@ -107,7 +107,7 @@ public class BookingRepository {
                 + "AND NOT (end_time <= ? OR start_time >= ?)";
         List<Booking> bookings = new ArrayList<>();
         try (Connection connection = database.getConnection();
-             PreparedStatement stmt = connection.prepareStatement(sql)) {
+                PreparedStatement stmt = connection.prepareStatement(sql)) {
             stmt.setLong(1, resourceId);
             stmt.setString(2, BookingStatus.REQUESTED.name());
             stmt.setString(3, BookingStatus.APPROVED.name());
@@ -125,16 +125,54 @@ public class BookingRepository {
         return bookings;
     }
 
+    public List<Booking> findActiveByResource(long resourceId, LocalDateTime start, LocalDateTime end) {
+        // [NEW] JOIN with users to get username
+        String sql = "SELECT b.*, u.username FROM bookings b JOIN users u ON b.user_id = u.id "
+                + "WHERE b.resource_id = ? AND b.status IN (?, ?, ?, ?) "
+                + "AND NOT (b.end_time <= ? OR b.start_time >= ?) ORDER BY b.start_time ASC";
+        List<Booking> bookings = new ArrayList<>();
+        try (Connection connection = database.getConnection();
+                PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setLong(1, resourceId);
+            stmt.setString(2, BookingStatus.REQUESTED.name());
+            stmt.setString(3, BookingStatus.APPROVED.name());
+            stmt.setString(4, BookingStatus.PAID.name());
+            stmt.setString(5, BookingStatus.ACTIVE.name());
+            stmt.setString(6, start.toString());
+            stmt.setString(7, end.toString());
+            ResultSet rs = stmt.executeQuery();
+            while (rs.next()) {
+                bookings.add(mapWithUsername(rs));
+            }
+        } catch (SQLException ex) {
+            throw new IllegalStateException("Failed to load active bookings", ex);
+        }
+        return bookings;
+    }
+
     private Booking map(ResultSet rs) throws SQLException {
         return new Booking(
                 rs.getLong("id"),
                 rs.getLong("user_id"),
+                null, // username not fetched in standard map
                 rs.getLong("resource_id"),
                 LocalDateTime.parse(rs.getString("start_time")),
                 LocalDateTime.parse(rs.getString("end_time")),
                 rs.getDouble("price"),
                 BookingStatus.valueOf(rs.getString("status")),
-                LocalDateTime.parse(rs.getString("created_at"))
-        );
+                LocalDateTime.parse(rs.getString("created_at")));
+    }
+
+    private Booking mapWithUsername(ResultSet rs) throws SQLException {
+        return new Booking(
+                rs.getLong("id"),
+                rs.getLong("user_id"),
+                rs.getString("username"), // [NEW]
+                rs.getLong("resource_id"),
+                LocalDateTime.parse(rs.getString("start_time")),
+                LocalDateTime.parse(rs.getString("end_time")),
+                rs.getDouble("price"),
+                BookingStatus.valueOf(rs.getString("status")),
+                LocalDateTime.parse(rs.getString("created_at")));
     }
 }

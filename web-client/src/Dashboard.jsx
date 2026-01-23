@@ -1,0 +1,479 @@
+import { useState, useEffect } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Calendar, Clock, DollarSign, CheckCircle, XCircle, AlertCircle, CreditCard, ChevronRight, LayoutGrid, FileText, User } from 'lucide-react'
+import { format, addDays, startOfDay } from 'date-fns'
+import Timetable from './Timetable'
+
+function Dashboard({ user }) {
+    const [resources, setResources] = useState([])
+    const [bookings, setBookings] = useState([])
+    const [activeResourceBookings, setActiveResourceBookings] = useState([]) // For Timetable
+    const [pendingBookings, setPendingBookings] = useState([])
+    const [auditLogs, setAuditLogs] = useState([]) // [NEW] Audit Logs
+    const [selectedResource, setSelectedResource] = useState(null)
+
+    // Timetable State
+    const [viewDate, setViewDate] = useState(new Date())
+
+    const handleNavigate = (days) => {
+        setViewDate(prev => addDays(prev, days))
+    }
+
+    // Dashboard Tabs for Admin
+    const [adminTab, setAdminTab] = useState('pending') // 'pending' or 'audit'
+
+    // Form State
+    const [start, setStart] = useState('')
+    const [end, setEnd] = useState('')
+
+    const [loading, setLoading] = useState(false)
+    const [msg, setMsg] = useState('')
+
+    const fetchData = async () => {
+        try {
+            const [resRes, resBook] = await Promise.all([
+                fetch('/api/resources').then(r => r.json()),
+                fetch(`/api/bookings/my?userId=${user.id}`).then(r => r.json())
+            ])
+            setResources(resRes)
+            setBookings(resBook)
+
+            // Default to first resource for timetable if available
+            if (!selectedResource && resRes.length > 0) {
+                setSelectedResource(resRes[0].id)
+            }
+
+            if (user.role === 'ADMIN') {
+                const [resPending, resAudit] = await Promise.all([
+                    fetch('/api/bookings/pending').then(r => r.json()),
+                    fetch('/api/audit').then(r => r.json())
+                ])
+                setPendingBookings(resPending)
+                setAuditLogs(resAudit)
+            }
+        } catch (e) {
+            console.error(e)
+        }
+    }
+
+    // Fetch timetable data when resource changes
+    useEffect(() => {
+        if (!selectedResource) return
+        const fetchResourceBookings = async () => {
+            try {
+                // Use startOfDay to ensure we get all bookings for the first day, not just from current time onwards
+                const startDay = startOfDay(viewDate)
+                const rangeStart = format(startDay, "yyyy-MM-dd'T'HH:mm:ss")
+                const rangeEnd = format(addDays(startDay, 5), "yyyy-MM-dd'T'HH:mm:ss")
+
+                const res = await fetch(`/api/bookings?resourceId=${selectedResource}&start=${rangeStart}&end=${rangeEnd}`)
+                if (res.ok) {
+                    const data = await res.json()
+                    setActiveResourceBookings(data)
+                }
+            } catch (e) { console.error(e) }
+        }
+        fetchResourceBookings()
+        // Poll every 30s?
+    }, [selectedResource, bookings, viewDate]) // Re-fetch when my bookings change too
+
+    useEffect(() => {
+        fetchData()
+    }, [user]) // eslint-disable-line react-hooks/exhaustive-deps
+
+    const handleBooking = async (e) => {
+        if (e) e.preventDefault()
+        if (!selectedResource || !start || !end) return
+        setLoading(true)
+        setMsg('')
+        try {
+            const res = await fetch('/api/bookings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId: user.id,
+                    resourceId: selectedResource,
+                    start: start,
+                    end: end
+                })
+            })
+            if (!res.ok) throw new Error((await res.json()).title || 'Booking failed')
+            setMsg('Success! Booking requested.')
+            setStart('')
+            setEnd('')
+            fetchData() // Refresh list
+        } catch (err) {
+            setMsg(err.message)
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    const onSlotSelect = (slotStart, slotEnd) => {
+        // Convert to local datetime string for input: YYYY-MM-DDTHH:mm
+        // Use date-fns format
+        setStart(format(slotStart, "yyyy-MM-dd'T'HH:mm"))
+        setEnd(format(slotEnd, "yyyy-MM-dd'T'HH:mm"))
+    }
+
+    const handleAction = async (action, bookingId, body = {}) => {
+        try {
+            let url = `/api/bookings/${bookingId}/${action}?`
+            if (action === 'approve' || action === 'reject') url += `adminId=${user.id}`
+            if (action === 'cancel') url += `userId=${user.id}`
+
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: Object.keys(body).length ? JSON.stringify(body) : undefined
+            })
+            if (!res.ok) throw new Error('Action failed')
+            fetchData()
+        } catch (err) {
+            alert(err.message)
+        }
+    }
+
+    if (user.role === 'ADMIN') {
+        return (
+            <div className="animate-in" style={{ maxWidth: '1200px', margin: '0 auto' }}>
+                <header style={{ marginBottom: '40px', display: 'flex', justifyContent: 'space-between', alignItems: 'end' }}>
+                    <div>
+                        <h1 style={{ fontSize: '2.5em', marginBottom: '0.2em' }}>Admin Dashboard</h1>
+                        <p style={{ color: '#666', margin: 0 }}>System Overview & Approvals</p>
+                    </div>
+                    <div style={{ display: 'flex', gap: '20px' }}>
+                        <div style={{ textAlign: 'right' }}>
+                            <div style={{ fontSize: '2em', fontWeight: '700', lineHeight: 1 }}>{pendingBookings.length}</div>
+                            <div style={{ fontSize: '0.8em', color: '#facc15', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Pending</div>
+                        </div>
+                    </div>
+                </header>
+
+                {/* Admin Tabs */}
+                <div style={{ display: 'flex', gap: '20px', marginBottom: '30px', borderBottom: '1px solid #e5e7eb' }}>
+                    <button
+                        onClick={() => setAdminTab('pending')}
+                        style={{
+                            background: 'transparent',
+                            border: 'none',
+                            padding: '10px 20px',
+                            borderBottom: adminTab === 'pending' ? '2px solid #8b5cf6' : '2px solid transparent',
+                            color: adminTab === 'pending' ? '#8b5cf6' : '#6b7280',
+                            cursor: 'pointer',
+                            fontSize: '1em',
+                            boxShadow: 'none'
+                        }}
+                    >
+                        Pending Approvals
+                    </button>
+                    <button
+                        onClick={() => setAdminTab('audit')}
+                        style={{
+                            background: 'transparent',
+                            border: 'none',
+                            padding: '10px 20px',
+                            borderBottom: adminTab === 'audit' ? '2px solid #8b5cf6' : '2px solid transparent',
+                            color: adminTab === 'audit' ? '#8b5cf6' : '#6b7280',
+                            cursor: 'pointer',
+                            fontSize: '1em',
+                            boxShadow: 'none'
+                        }}
+                    >
+                        <FileText size={16} style={{ display: 'inline', marginRight: '8px' }} />
+                        Audit Log
+                    </button>
+                </div>
+
+                <AnimatePresence mode="wait">
+                    {adminTab === 'pending' && (
+                        <motion.div
+                            key="pending"
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: 20 }}
+                        >
+                            {pendingBookings.length === 0 && <div style={{ color: '#666', fontStyle: 'italic', padding: '40px', textAlign: 'center', border: '1px dashed #e5e7eb', borderRadius: '12px' }}>No pending approvals.</div>}
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '20px' }}>
+                                {pendingBookings.map(b => (
+                                    <BookingCard key={b.id} booking={b} isAdmin={true} onAction={handleAction} resources={resources} />
+                                ))}
+                            </div>
+                        </motion.div>
+                    )}
+
+                    {adminTab === 'audit' && (
+                        <motion.div
+                            key="audit"
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -20 }}
+                            style={{ background: 'white', borderRadius: '16px', border: '1px solid #e5e7eb', overflow: 'hidden' }}
+                        >
+                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9em' }}>
+                                <thead>
+                                    <tr style={{ background: '#f9fafb', textAlign: 'left' }}>
+                                        <th style={{ padding: '15px', fontWeight: '600', color: '#4b5563' }}>Time</th>
+                                        <th style={{ padding: '15px', fontWeight: '600', color: '#4b5563' }}>User</th>
+                                        <th style={{ padding: '15px', fontWeight: '600', color: '#4b5563' }}>Action</th>
+                                        <th style={{ padding: '15px', fontWeight: '600', color: '#4b5563' }}>Details</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {auditLogs.slice().reverse().map(log => (
+                                        <tr key={log.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                                            <td style={{ padding: '15px', color: '#6b7280' }}>{format(new Date(log.createdAt), 'MMM d, HH:mm:ss')}</td>
+                                            <td style={{ padding: '15px' }}><span style={{ background: '#f3f4f6', padding: '2px 6px', borderRadius: '4px', fontSize: '0.85em', color: '#374151' }}>User {log.userId}</span></td>
+                                            <td style={{ padding: '15px', color: '#0891b2' }}>{log.action}</td>
+                                            <td style={{ padding: '15px', color: '#374151' }}>{log.details}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                            {auditLogs.length === 0 && <div style={{ padding: '40px', textAlign: 'center', color: '#666' }}>No logs found.</div>}
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
+                <h3 style={{ marginTop: '50px', display: 'flex', alignItems: 'center', gap: '10px', color: '#111827' }}>
+                    <LayoutGrid size={20} color="#06b6d4" /> System Status
+                </h3>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
+                    <div className='card' style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: '2em', fontWeight: '600' }}>{resources.length}</div>
+                        <div style={{ fontSize: '0.8em', color: '#6b7280' }}>Active Rooms</div>
+                    </div>
+                    <div className='card' style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: '2em', fontWeight: '600' }}>{auditLogs.length}</div>
+                        <div style={{ fontSize: '0.8em', color: '#6b7280' }}>Total Events Logged</div>
+                    </div>
+                </div>
+            </div>
+        )
+    }
+
+    // CUSTOMER DASHBOARD
+    return (
+        <div className="animate-in" style={{ maxWidth: '1200px', margin: '0 auto' }}>
+            <header style={{ marginBottom: '40px', display: 'flex', justifyContent: 'space-between', alignItems: 'end' }}>
+                <div>
+                    <h1 style={{ fontSize: '2.5em', marginBottom: '0.2em' }}>Welcome back, {user.username}</h1>
+                    <p style={{ color: '#666', margin: 0 }}>Manage your study sessions and bookings.</p>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: '3em', fontWeight: '700', lineHeight: 1 }}>{bookings.filter(b => b.status !== 'CANCELLED').length}</div>
+                    <div style={{ fontSize: '0.9em', color: '#666', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Active Bookings</div>
+                </div>
+            </header>
+
+            {/* Timetable Section */}
+            <section style={{ marginBottom: '40px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                    <h3 style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: 0, color: '#111827' }}>
+                        <LayoutGrid size={20} color="#06b6d4" /> Room Availability
+                    </h3>
+                    <select
+                        value={selectedResource || ''}
+                        onChange={e => setSelectedResource(Number(e.target.value))}
+                        style={{ width: 'auto', margin: 0, minWidth: '200px' }}
+                    >
+                        {resources.map(r => (
+                            <option key={r.id} value={r.id}>
+                                {r.name} — ${r.basePricePerHour}/hr
+                                {r.approvalPolicyKey === 'ADMIN_APPROVAL' ? ' (Approval Required)' : ''}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+
+                <Timetable
+                    bookings={activeResourceBookings}
+                    onSelectSlot={onSlotSelect}
+                    viewDate={viewDate}
+                    onNavigate={handleNavigate}
+                    currentUserId={user.id}
+                />
+                <p style={{ textAlign: 'center', marginTop: '10px', fontSize: '0.9em', color: '#6b7280' }}>
+                    Drag to select time range. Use arrows to navigate weeks.
+                </p>
+            </section>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: '30px', alignItems: 'start' }}>
+
+                {/* Booking Form */}
+                <section className="card">
+                    <h3 style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#111827' }}>
+                        <Calendar size={20} color="#8b5cf6" /> New Booking
+                    </h3>
+                    {msg && (
+                        <div style={{
+                            padding: '10px', borderRadius: '8px', marginBottom: '15px',
+                            background: msg.includes('Success') ? '#dcfce7' : '#fee2e2',
+                            color: msg.includes('Success') ? '#166534' : '#991b1b',
+                            border: msg.includes('Success') ? '1px solid #86efac' : '1px solid #fca5a5',
+                            fontSize: '0.9em'
+                        }}>
+                            {msg}
+                        </div>
+                    )}
+                    <form onSubmit={handleBooking} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <p style={{ fontSize: '0.9em', color: '#6b7280', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            Booking for: <strong style={{ color: '#111827' }}>{resources.find(r => r.id === selectedResource)?.name}</strong>
+                            {resources.find(r => r.id === selectedResource)?.approvalPolicyKey === 'ADMIN_APPROVAL' && (
+                                <span style={{
+                                    background: '#fee2e2',
+                                    color: '#b91c1c',
+                                    padding: '2px 8px',
+                                    borderRadius: '12px',
+                                    fontSize: '0.75em',
+                                    fontWeight: '600'
+                                }}>
+                                    Approval Required
+                                </span>
+                            )}
+                        </p>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                            <div>
+                                <label style={{ fontSize: '0.85em', color: '#6b7280', marginLeft: '4px' }}>Start Time</label>
+                                <input
+                                    type="datetime-local"
+                                    value={start}
+                                    onChange={e => setStart(e.target.value)}
+                                    required
+                                />
+                            </div>
+                            <div>
+                                <label style={{ fontSize: '0.85em', color: '#6b7280', marginLeft: '4px' }}>End Time</label>
+                                <input
+                                    type="datetime-local"
+                                    value={end}
+                                    onChange={e => setEnd(e.target.value)}
+                                    required
+                                />
+                            </div>
+                        </div>
+
+                        <button type="submit" className="primary" disabled={loading} style={{ marginTop: '10px' }}>
+                            {loading ? 'Processing...' : 'Request Booking'}
+                        </button>
+                    </form>
+                </section>
+
+                {/* List Section */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    {/* ... (Keep existing list logic) */}
+                    {user.role === 'ADMIN' && pendingBookings.length > 0 && (
+                        <section>
+                            <h3 style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#ea580c' }}>
+                                <AlertCircle size={20} /> Pending Actions
+                            </h3>
+                            <div style={{ display: 'grid', gap: '15px' }}>
+                                {pendingBookings.map(b => (
+                                    <BookingCard key={b.id} booking={b} isAdmin={true} onAction={handleAction} resources={resources} />
+                                ))}
+                            </div>
+                        </section>
+                    )}
+
+                    <section>
+                        <h3 style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#111827' }}>
+                            <Clock size={20} color="#ec4899" /> My History
+                        </h3>
+                        <AnimatePresence>
+                            <div style={{ display: 'grid', gap: '15px' }}>
+                                {bookings.slice().reverse().map(b => (
+                                    <BookingCard key={b.id} booking={b} isAdmin={false} userId={user.id} onAction={handleAction} resources={resources} />
+                                ))}
+                                {bookings.length === 0 && <div style={{ color: '#666', fontStyle: 'italic' }}>No bookings yet.</div>}
+                            </div>
+                        </AnimatePresence>
+                    </section>
+                </div>
+
+            </div>
+        </div>
+    )
+}
+
+function BookingCard({ booking, isAdmin, userId, onAction, resources }) {
+    const resource = resources.find(r => r.id === booking.resourceId)
+
+    // Status Icon Logic
+    const StatusIcon = {
+        'APPROVED': <CheckCircle size={16} />,
+        'REQUESTED': <Clock size={16} />,
+        'REJECTED': <XCircle size={16} />,
+        'PAID': <DollarSign size={16} />,
+        'CANCELLED': <XCircle size={16} />,
+        'REFUNDED': <DollarSign size={16} />
+    }[booking.status] || <AlertCircle size={16} />
+
+    const startTime = new Date(booking.startTime)
+    const endTime = new Date(booking.endTime)
+
+    return (
+        <motion.div
+            layout
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            style={{
+                background: 'white',
+                border: '1px solid #e5e7eb',
+                borderRadius: '16px',
+                padding: '20px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px',
+                boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)'
+            }}
+        >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ fontWeight: '600', fontSize: '1.1em', color: '#111827' }}>{resource?.name || 'Unknown Room'}</div>
+                <div className={`status-badge status-${booking.status}`}>
+                    {StatusIcon} {booking.status}
+                </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '24px', fontSize: '0.9em', color: '#6b7280' }}>
+                <div>
+                    <div style={{ fontSize: '0.75em', color: '#9ca3af', marginBottom: '2px' }}>DATE</div>
+                    {startTime.toLocaleDateString()}
+                </div>
+                <div>
+                    <div style={{ fontSize: '0.75em', color: '#9ca3af', marginBottom: '2px' }}>TIME</div>
+                    {startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {endTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </div>
+                <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
+                    <div style={{ fontSize: '0.75em', color: '#9ca3af', marginBottom: '2px' }}>PRICE</div>
+                    <span style={{ fontSize: '1.2em', color: '#111827', fontWeight: '500' }}>${booking.price.toFixed(2)}</span>
+                </div>
+            </div>
+
+            {(isAdmin || (['REQUESTED', 'APPROVED'].includes(booking.status))) && (
+                <div style={{ paddingTop: '15px', marginTop: '5px', borderTop: '1px solid #f3f4f6', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                    {isAdmin && booking.status === 'REQUESTED' && (
+                        <>
+                            <button onClick={() => onAction('approve', booking.id)} style={{ padding: '6px 12px', fontSize: '0.85em', background: '#dcfce7', color: '#166534', border: '1px solid #86efac', boxShadow: 'none' }}>Approve</button>
+                            <button onClick={() => onAction('reject', booking.id)} className="danger" style={{ padding: '6px 12px', fontSize: '0.85em', boxShadow: 'none' }}>Reject</button>
+                        </>
+                    )}
+
+                    {!isAdmin && booking.status === 'APPROVED' && (
+                        <button className="primary" onClick={() => onAction('pay', booking.id, { userId, method: 'CREDIT_CARD' })} style={{ padding: '6px 16px', fontSize: '0.85em', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <CreditCard size={14} /> Pay Now
+                        </button>
+                    )}
+
+                    {(booking.status === 'REQUESTED' || booking.status === 'APPROVED' || booking.status === 'PAID') && (
+                        <button onClick={() => onAction('cancel', booking.id)} style={{ padding: '6px 12px', fontSize: '0.85em', background: 'transparent', border: '1px solid #d1d5db', color: '#6b7280', boxShadow: 'none' }}>
+                            Cancel
+                        </button>
+                    )}
+                </div>
+            )}
+        </motion.div>
+    )
+}
+
+export default Dashboard

@@ -10,6 +10,7 @@ import java.util.List;
 public class Booking implements BookingSubject {
     private final long id;
     private final long userId;
+    private final String username; // [NEW]
     private final long resourceId;
     private final LocalDateTime startTime;
     private final LocalDateTime endTime;
@@ -19,9 +20,15 @@ public class Booking implements BookingSubject {
     private final List<BookingObserver> observers = new ArrayList<>();
 
     public Booking(long id, long userId, long resourceId, LocalDateTime startTime,
-                   LocalDateTime endTime, double price, BookingStatus status, LocalDateTime createdAt) {
+            LocalDateTime endTime, double price, BookingStatus status, LocalDateTime createdAt) {
+        this(id, userId, null, resourceId, startTime, endTime, price, status, createdAt);
+    }
+
+    public Booking(long id, long userId, String username, long resourceId, LocalDateTime startTime,
+            LocalDateTime endTime, double price, BookingStatus status, LocalDateTime createdAt) {
         this.id = id;
         this.userId = userId;
+        this.username = username;
         this.resourceId = resourceId;
         this.startTime = startTime;
         this.endTime = endTime;
@@ -36,6 +43,10 @@ public class Booking implements BookingSubject {
 
     public long getUserId() {
         return userId;
+    }
+
+    public String getUsername() {
+        return username;
     }
 
     public long getResourceId() {
