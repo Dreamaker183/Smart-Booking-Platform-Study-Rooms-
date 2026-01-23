@@ -1,63 +1,187 @@
 .root {
-    -fx-font-family: "Avenir Next";
-    -fx-base: #f5f2ed;
-    -fx-background: #f5f2ed;
+    -fx-font-family: "Segoe UI", "Roboto", "Helvetica Neue", sans-serif;
+    -fx-base: #ffffff;
+    -fx-background: #f8fafc;
 }
 
 .screen {
-    -fx-background-color: linear-gradient(to bottom right, #f7f3ee, #efe8df);
+    -fx-background-color: #f8fafc;
 }
 
 .label {
-    -fx-text-fill: #2a2a2a;
-}
-
-.button {
-    -fx-background-color: #2f3a42;
-    -fx-text-fill: #f6f1eb;
-    -fx-background-radius: 8;
-    -fx-padding: 6 14 6 14;
-}
-
-.button:hover {
-    -fx-background-color: #3b4a53;
-}
-
-.text-field, .password-field {
-    -fx-background-color: #ffffff;
-    -fx-background-radius: 6;
-    -fx-border-color: #c7bfb5;
-    -fx-border-radius: 6;
-    -fx-padding: 6 8 6 8;
-}
-
-.list-view {
-    -fx-background-color: #ffffff;
-    -fx-background-radius: 8;
-    -fx-border-color: #d6cec5;
-    -fx-border-radius: 8;
-}
-
-.tab-pane .tab-header-area {
-    -fx-background-color: transparent;
-}
-
-.tab-pane .tab {
-    -fx-background-color: #e4dbd1;
-    -fx-background-radius: 10 10 0 0;
-    -fx-padding: 6 12 6 12;
-}
-
-.tab-pane .tab:selected {
-    -fx-background-color: #2f3a42;
-}
-
-.tab-pane .tab:selected .tab-label {
-    -fx-text-fill: #f6f1eb;
+    -fx-text-fill: #1e293b;
 }
 
 .section-title {
-    -fx-font-size: 16px;
+    -fx-font-size: 22px;
     -fx-font-weight: bold;
-    -fx-text-fill: #2f3a42;
+    -fx-text-fill: #1e293b;
+}
+
+.subtitle {
+    -fx-font-size: 13px;
+    -fx-text-fill: #64748b;
+}
+
+/* Tab Pane Styling */
+.tab-pane {
+    -fx-background-color: transparent;
+}
+
+.tab-pane .tab-header-area {
+    -fx-padding: 0 0 10 0;
+}
+
+.tab-pane .tab {
+    -fx-background-color: transparent;
+    -fx-background-radius: 20;
+    -fx-padding: 8 16;
+    -fx-cursor: hand;
+}
+
+.tab-pane .tab .tab-label {
+    -fx-text-fill: #64748b;
+    -fx-font-weight: 600;
+}
+
+.tab-pane .tab:selected {
+    -fx-background-color: #ede9fe;
+    /* light violet */
+}
+
+.tab-pane .tab:selected .tab-label {
+    -fx-text-fill: #7c3aed;
+    /* violet-600 */
+}
+
+/* Button Styling */
+.button {
+    -fx-background-color: #7c3aed;
+    /* violet-600 */
+    -fx-text-fill: white;
+    -fx-background-radius: 8;
+    -fx-padding: 8 20;
+    -fx-font-weight: 600;
+    -fx-cursor: hand;
+}
+
+.button:hover {
+    -fx-background-color: #6d28d9;
+    /* violet-700 */
+}
+
+.button:pressed {
+    -fx-background-color: #5b21b6;
+    /* violet-800 */
+}
+
+.button.secondary {
+    -fx-background-color: #f1f5f9;
+    -fx-text-fill: #475569;
+}
+
+.button.secondary:hover {
+    -fx-background-color: #e2e8f0;
+}
+
+/* Form Controls */
+.text-field,
+.password-field,
+.combo-box,
+.date-picker {
+    -fx-background-color: white;
+    -fx-background-radius: 8;
+    -fx-border-color: #e2e8f0;
+    -fx-border-radius: 8;
+    -fx-padding: 8;
+}
+
+.text-field:focused,
+.password-field:focused,
+.combo-box:focused,
+.date-picker:focused {
+    -fx-border-color: #a78bfa;
+    /* violet-300 */
+    -fx-effect: dropshadow(three-pass-box, rgba(139, 92, 246, 0.1), 8, 0, 0, 0);
+}
+
+/* List View */
+.list-view {
+    -fx-background-color: white;
+    -fx-background-radius: 12;
+    -fx-border-color: #f1f5f9;
+    -fx-border-radius: 12;
+    -fx-padding: 5;
+}
+
+.list-cell {
+    -fx-padding: 10 15;
+    -fx-background-color: transparent;
+}
+
+.list-cell:filled:hover {
+    -fx-background-color: #f8fafc;
+}
+
+.list-cell:filled:selected {
+    -fx-background-color: #f5f3ff;
+    -fx-text-fill: #7c3aed;
+}
+
+/* Cards */
+.card {
+    -fx-background-color: white;
+    -fx-background-radius: 16;
+    -fx-padding: 20;
+    -fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.05), 10, 0, 0, 2);
+}
+
+/* Timetable Styles */
+.timetable-scroll {
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+}
+
+.timetable-grid {
+    -fx-background-color: white;
+    -fx-padding: 10;
+}
+
+.hour-label {
+    -fx-padding: 0 10;
+    -fx-font-size: 11px;
+    -fx-text-fill: #94a3b8;
+    -fx-border-color: #f1f5f9;
+    -fx-border-width: 0 1 1 0;
+}
+
+.day-header {
+    -fx-padding: 10;
+    -fx-font-weight: bold;
+    -fx-text-fill: #475569;
+    -fx-border-color: #f1f5f9;
+    -fx-border-width: 0 0 1 1;
+}
+
+.timetable-slot {
+    -fx-border-color: #f1f5f9;
+    -fx-border-width: 0 0 1 1;
+}
+
+.booking-block {
+    -fx-background-radius: 8;
+    -fx-padding: 6;
+    -fx-border-width: 1;
+}
+
+.booking-mine {
+    -fx-background-color: #f5f3ff;
+    -fx-border-color: #c4b5fd;
+    -fx-text-fill: #7c3aed;
+}
+
+.booking-other {
+    -fx-background-color: #f8fafc;
+    -fx-border-color: #e2e8f0;
+    -fx-text-fill: #64748b;
 }

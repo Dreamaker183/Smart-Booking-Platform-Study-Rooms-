@@ -15,3 +15,12 @@ smart_booking.db
 .idea/
 *.iml
 .vscode/
+
+# Web Client
+web-client/node_modules/
+web-client/dist/
+web-client/.env
+web-client/npm-debug.log*
+web-client/yarn-debug.log*
+web-client/yarn-error.log*
+web-client/.vscode/

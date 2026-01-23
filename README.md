@@ -3,32 +3,30 @@
 University-scale booking system for study rooms with dynamic pricing, approvals, payments, cancellations/refunds, and full auditability. The platform models a complete booking lifecycle (requested → approved → paid → active → completed/cancelled/refunded) and enforces policy-driven business rules per resource type. It ships with a JavaFX GUI (default) and an optional CLI mode.
 
 ## Features
+### Core System
 - Register/login (local auth)
 - Browse study rooms + availability (conflict checks)
 - Create booking requests with dynamic pricing
 - Admin approval/rejection for selected rooms
 - Payment simulation + refund logic
 - Booking lifecycle state machine
-- Notifications (observer pattern)
 - Audit log of actions
+
+### Modern UI/UX
+- **Java Desktop Overhaul**: Modern Indigo theme, card-based layouts, and a custom **Interactive Timetable** with drag-selection.
+- **Web Client**: React-based dashboard with real-time-like updates and a synchronized timetable view.
 
 ## Tech Stack
 - Java 17
 - SQLite (JDBC)
 - Maven (fat JAR via Shade)
 - JUnit 5
-
 ## Project Structure
 ```
-src/main/java/com/smartbooking/domain
-src/main/java/com/smartbooking/domain/policy
-src/main/java/com/smartbooking/domain/state
-src/main/java/com/smartbooking/service
-src/main/java/com/smartbooking/persistence
-src/main/java/com/smartbooking/ui
-src/main/java/com/smartbooking/util
-src/main/resources
-src/test/java/com/smartbooking
+src/                              # Java Source
+web-client/                       # React Web Client (Vite)
+pom.xml                           # Maven Configuration
+smart_booking.db                  # SQLite Database
 ```
 
 ## Build
@@ -36,12 +34,16 @@ src/test/java/com/smartbooking
 mvn clean package
 ```
 
-## Run
-```
-java -jar target/smart-booking-1.0.0.jar
-```
-
 Database file `smart_booking.db` will be created in the project root on first run.
+
+## Web Client Setup
+The web client is located in the `web-client` directory.
+```bash
+cd web-client
+npm install
+npm run dev
+```
+The backend server (WebServer.java) must be running for the web client to function.
 
 ## Default Accounts
 - Admin: `admin` / `admin123`

@@ -11,9 +11,11 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
@@ -39,24 +41,39 @@ public class FxApp extends Application {
     }
 
     private Scene createLoginScene() {
+        VBox container = new VBox(25);
+        container.setPadding(new Insets(40));
+        container.getStyleClass().add("card");
+
+        VBox header = new VBox(5);
+        Label titleLabel = new Label("Smart Booking");
+        titleLabel.getStyleClass().add("section-title");
+        Label subtitle = new Label("Sign in to manage your sessions");
+        subtitle.getStyleClass().add("subtitle");
+        header.getChildren().addAll(titleLabel, subtitle);
+
         GridPane grid = new GridPane();
-        grid.setPadding(new Insets(20));
-        grid.setHgap(10);
-        grid.setVgap(10);
+        grid.setHgap(15);
+        grid.setVgap(15);
 
         TextField username = new TextField();
+        username.setPromptText("Enter username");
         PasswordField password = new PasswordField();
+        password.setPromptText("Enter password");
         Label status = new Label();
 
-        Button login = new Button("Login");
-        Button register = new Button("Register");
+        grid.addRow(0, new Label("Username"), username);
+        grid.addRow(1, new Label("Password"), password);
 
-        grid.addRow(0, new Label("Username:"), username);
-        grid.addRow(1, new Label("Password:"), password);
-        grid.add(new HBox(10, login, register), 1, 2);
-        grid.add(status, 1, 3);
+        HBox buttons = new HBox(15, new Button("Login"), new Button("Register"));
+        buttons.getChildren().get(1).getStyleClass().add("secondary");
 
-        login.setOnAction(event -> {
+        VBox loginBox = new VBox(20, header, grid, buttons, status);
+
+        Button loginBtn = (Button) buttons.getChildren().get(0);
+        Button regBtn = (Button) buttons.getChildren().get(1);
+
+        loginBtn.setOnAction(event -> {
             try {
                 currentUser = services.getAuthService().login(username.getText().trim(), password.getText());
                 if (currentUser.getRole() == Role.ADMIN) {
@@ -69,146 +86,162 @@ public class FxApp extends Application {
             }
         });
 
-        register.setOnAction(event -> {
+        regBtn.setOnAction(event -> {
             try {
                 services.getAuthService().register(username.getText().trim(), password.getText());
-                status.setText("Registered. You can login now.");
+                status.setText("Registered! You can now login.");
             } catch (Exception ex) {
                 status.setText("Register failed: " + ex.getMessage());
             }
         });
 
-        Scene scene = new Scene(grid, 480, 260);
+        Scene scene = new Scene(new VBox(loginBox), 520, 380);
         scene.getRoot().getStyleClass().add("screen");
+        ((VBox) scene.getRoot()).setPadding(new Insets(30));
         return scene;
     }
 
     private Scene createCustomerScene() {
-        TabPane tabs = new TabPane();
-        tabs.getTabs().add(new Tab("Resources", createResourcesPane()));
-        tabs.getTabs().add(new Tab("Create Booking", createBookingPane()));
-        tabs.getTabs().add(new Tab("My Bookings", createMyBookingsPane()));
-        tabs.getTabs().add(new Tab("Notifications", createNotificationsPane()));
+        VBox header = new VBox(5);
+        Label titleLabel = new Label("Dashboard");
+        titleLabel.getStyleClass().add("section-title");
+        Label subtitle = new Label("View room availability and create bookings");
+        subtitle.getStyleClass().add("subtitle");
+        header.getChildren().addAll(titleLabel, subtitle);
 
-        Button logout = new Button("Logout");
+        TabPane tabs = new TabPane();
+        tabs.getTabs().add(new Tab("Dashboard", createDashboardPane()));
+        tabs.getTabs().add(new Tab("My History", createMyBookingsPane()));
+        tabs.getTabs().add(new Tab("Notifications", createNotificationsPane()));
+        tabs.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
+
+        Button logout = new Button("Sign Out");
+        logout.getStyleClass().add("secondary");
         logout.setOnAction(event -> {
             currentUser = null;
             stage.setScene(createLoginScene());
         });
 
-        VBox root = new VBox(10, tabs, logout);
-        root.setPadding(new Insets(10));
-        Scene scene = new Scene(root, 900, 560);
+        HBox topBar = new HBox(20, header);
+        topBar.setPadding(new Insets(0, 0, 10, 0));
+
+        VBox root = new VBox(20, topBar, tabs, logout);
+        root.setPadding(new Insets(30));
+        Scene scene = new Scene(root, 1000, 700);
         scene.getRoot().getStyleClass().add("screen");
         return scene;
     }
 
     private Scene createAdminScene() {
-        TabPane tabs = new TabPane();
-        tabs.getTabs().add(new Tab("Pending Approvals", createPendingPane()));
-        tabs.getTabs().add(new Tab("Audit Log", createAuditPane()));
+        VBox header = new VBox(5);
+        Label titleLabel = new Label("Admin Center");
+        titleLabel.getStyleClass().add("section-title");
+        Label subtitle = new Label("System overview and approval requests");
+        subtitle.getStyleClass().add("subtitle");
+        header.getChildren().addAll(titleLabel, subtitle);
 
-        Button logout = new Button("Logout");
+        TabPane tabs = new TabPane();
+        tabs.getTabs().add(new Tab("Approvals", createPendingPane()));
+        tabs.getTabs().add(new Tab("System Logs", createAuditPane()));
+        tabs.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
+
+        Button logout = new Button("Sign Out");
+        logout.getStyleClass().add("secondary");
         logout.setOnAction(event -> {
             currentUser = null;
             stage.setScene(createLoginScene());
         });
 
-        VBox root = new VBox(10, tabs, logout);
-        root.setPadding(new Insets(10));
-        Scene scene = new Scene(root, 900, 560);
+        VBox root = new VBox(20, header, tabs, logout);
+        root.setPadding(new Insets(30));
+        Scene scene = new Scene(root, 1000, 700);
         scene.getRoot().getStyleClass().add("screen");
         return scene;
     }
 
-    private VBox createResourcesPane() {
-        ListView<String> list = new ListView<>();
-        Button refresh = new Button("Refresh");
-        refresh.setOnAction(event -> list.setItems(loadResources()));
-        list.setItems(loadResources());
-        VBox root = new VBox(10, header("Resources"), refresh, list);
-        root.setPadding(new Insets(10));
-        return root;
-    }
-
-    private VBox createBookingPane() {
+    private VBox createDashboardPane() {
         ComboBox<Resource> resourceBox = new ComboBox<>();
-        DatePicker datePicker = new DatePicker();
-        ComboBox<LocalTime> startTime = new ComboBox<>();
-        ComboBox<LocalTime> endTime = new ComboBox<>();
-        Label status = new Label();
-        Button create = new Button("Create Booking");
-        Button refresh = new Button("Refresh Resources");
-
         resourceBox.setItems(FXCollections.observableArrayList(services.getResourceService().listResources()));
-        resourceBox.setPromptText("Select a room");
-        resourceBox.setCellFactory(list -> new ListCell<>() {
-            @Override
-            protected void updateItem(Resource item, boolean empty) {
-                super.updateItem(item, empty);
-                if (empty || item == null) {
-                    setText(null);
-                } else {
-                    setText(item.getName() + " (" + item.getType() + ") - $"
-                            + String.format("%.2f", item.getBasePricePerHour()) + "/hr");
-                }
+        resourceBox.setPromptText("Select a Room to View Availability");
+        resourceBox.setMaxWidth(Double.MAX_VALUE);
+
+        TimetablePane timetable = new TimetablePane(services, currentUser.getId());
+
+        resourceBox.setOnAction(e -> {
+            Resource r = resourceBox.getValue();
+            if (r != null) {
+                timetable.setResource(r.getId());
             }
         });
-        resourceBox.setButtonCell(resourceBox.getCellFactory().call(null));
 
-        startTime.setItems(buildTimeOptions());
-        endTime.setItems(buildTimeOptions());
-        startTime.setPromptText("Start");
-        endTime.setPromptText("End");
+        // Booking Form Section
+        VBox bookingForm = new VBox(20);
+        bookingForm.setPadding(new Insets(20));
+        bookingForm.getStyleClass().add("card");
+        bookingForm.setMinWidth(300);
 
-        refresh.setOnAction(event -> resourceBox.setItems(FXCollections.observableArrayList(
-                services.getResourceService().listResources())));
+        DatePicker datePicker = new DatePicker(LocalDate.now());
+        ComboBox<LocalTime> startTime = new ComboBox<>(buildTimeOptions());
+        ComboBox<LocalTime> endTime = new ComboBox<>(buildTimeOptions());
+        timetable.setSelectionListener((date, start, end) -> {
+            datePicker.setValue(date);
+            startTime.setValue(start);
+            endTime.setValue(end);
+        });
 
-        create.setOnAction(event -> {
+        Label status = new Label();
+        status.setWrapText(true);
+        Button bookBtn = new Button("Confirm Booking");
+        bookBtn.setMaxWidth(Double.MAX_VALUE);
+
+        GridPane formGrid = new GridPane();
+        formGrid.setHgap(10);
+        formGrid.setVgap(15);
+        formGrid.addRow(0, new Label("Date"), datePicker);
+        formGrid.addRow(1, new Label("Start"), startTime);
+        formGrid.addRow(2, new Label("End"), endTime);
+
+        bookBtn.setOnAction(e -> {
             try {
-                Resource resource = resourceBox.getValue();
-                if (resource == null) {
-                    throw new IllegalArgumentException("Select a room");
-                }
-                if (datePicker.getValue() == null || startTime.getValue() == null || endTime.getValue() == null) {
-                    throw new IllegalArgumentException("Pick date and time");
-                }
-                LocalDateTime startDateTime = LocalDateTime.of(datePicker.getValue(), startTime.getValue());
-                LocalDateTime endDateTime = LocalDateTime.of(datePicker.getValue(), endTime.getValue());
-                Booking booking = services.getBookingService().createBooking(
-                        currentUser.getId(),
-                        resource.getId(),
-                        new Timeslot(startDateTime, endDateTime));
-                status.setText("Created booking " + booking.getId() + " status " + booking.getStatus()
-                        + " price $" + String.format("%.2f", booking.getPrice()));
+                Resource r = resourceBox.getValue();
+                if (r == null)
+                    throw new IllegalArgumentException("Select a room first");
+                LocalDateTime start = LocalDateTime.of(datePicker.getValue(), startTime.getValue());
+                LocalDateTime end = LocalDateTime.of(datePicker.getValue(), endTime.getValue());
+                services.getBookingService().createBooking(currentUser.getId(), r.getId(), new Timeslot(start, end));
+                status.setText("Booking successful!");
+                timetable.refresh();
             } catch (Exception ex) {
-                status.setText("Create failed: " + ex.getMessage());
+                status.setText("Error: " + ex.getMessage());
             }
         });
 
-        GridPane grid = new GridPane();
-        grid.setHgap(10);
-        grid.setVgap(10);
-        grid.addRow(0, new Label("Room:"), resourceBox, refresh);
-        grid.addRow(1, new Label("Date:"), datePicker);
-        grid.addRow(2, new Label("Time:"), new HBox(10, startTime, endTime));
-        grid.add(create, 1, 3);
+        bookingForm.getChildren().addAll(header("Quick Booking"), formGrid, bookBtn, status);
 
-        VBox root = new VBox(10, header("Create a Booking"), grid, status);
-        root.setPadding(new Insets(10));
-        return root;
+        HBox mainLayout = new HBox(20, timetable, bookingForm);
+        HBox.setHgrow(timetable, Priority.ALWAYS);
+
+        VBox content = new VBox(20, resourceBox, mainLayout);
+        return content;
     }
 
     private VBox createMyBookingsPane() {
         ListView<String> list = new ListView<>();
-        Button refresh = new Button("Refresh");
-        TextField bookingId = new TextField();
-        TextField method = new TextField();
-        Button pay = new Button("Pay");
-        Button cancel = new Button("Cancel");
-        Label status = new Label();
+        list.setPrefHeight(350);
+        Button refresh = new Button("Refresh History");
+        refresh.getStyleClass().add("secondary");
 
-        method.setPromptText("CARD or CASH");
+        TextField bookingId = new TextField();
+        bookingId.setPromptText("ID");
+        bookingId.setPrefWidth(60);
+
+        TextField method = new TextField();
+        method.setPromptText("CARD/CASH");
+
+        Button pay = new Button("Pay Now");
+        Button cancel = new Button("Cancel");
+        cancel.getStyleClass().add("secondary");
+        Label status = new Label();
 
         refresh.setOnAction(event -> list.setItems(loadBookings()));
         list.setItems(loadBookings());
@@ -217,7 +250,7 @@ public class FxApp extends Application {
             try {
                 long id = Long.parseLong(bookingId.getText().trim());
                 services.getBookingService().payBooking(currentUser.getId(), id, method.getText().trim());
-                status.setText("Payment recorded.");
+                status.setText("Payment successful.");
                 list.setItems(loadBookings());
             } catch (Exception ex) {
                 status.setText("Pay failed: " + ex.getMessage());
@@ -228,17 +261,20 @@ public class FxApp extends Application {
             try {
                 long id = Long.parseLong(bookingId.getText().trim());
                 services.getBookingService().cancelBooking(currentUser.getId(), id);
-                status.setText("Booking updated.");
+                status.setText("Booking cancelled.");
                 list.setItems(loadBookings());
             } catch (Exception ex) {
-                status.setText("Cancel failed: " + ex.getMessage());
+                status.setText("Error: " + ex.getMessage());
             }
         });
 
-        HBox actions = new HBox(10, new Label("Booking ID:"), bookingId, new Label("Method:"), method, pay, cancel);
-        VBox root = new VBox(10, header("My Bookings"), refresh, list, actions, status);
-        root.setPadding(new Insets(10));
-        return root;
+        HBox actions = new HBox(15, new Label("Action on ID:"), bookingId, method, pay, cancel);
+        actions.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+
+        VBox content = new VBox(20, header("My Booking History"), refresh, list, actions, status);
+        content.setPadding(new Insets(20));
+        content.getStyleClass().add("card");
+        return content;
     }
 
     private VBox createNotificationsPane() {
@@ -253,10 +289,15 @@ public class FxApp extends Application {
 
     private VBox createPendingPane() {
         ListView<String> list = new ListView<>();
-        Button refresh = new Button("Refresh");
+        list.setPrefHeight(400);
+        Button refresh = new Button("Fetch Requests");
+        refresh.getStyleClass().add("secondary");
+
         TextField bookingId = new TextField();
+        bookingId.setPromptText("Booking ID");
         Button approve = new Button("Approve");
         Button reject = new Button("Reject");
+        reject.getStyleClass().add("secondary");
         Label status = new Label();
 
         refresh.setOnAction(event -> list.setItems(loadPending()));
@@ -266,7 +307,7 @@ public class FxApp extends Application {
             try {
                 long id = Long.parseLong(bookingId.getText().trim());
                 services.getBookingService().approveBooking(currentUser.getId(), id);
-                status.setText("Approved.");
+                status.setText("Booking approved.");
                 list.setItems(loadPending());
             } catch (Exception ex) {
                 status.setText("Approve failed: " + ex.getMessage());
@@ -277,43 +318,40 @@ public class FxApp extends Application {
             try {
                 long id = Long.parseLong(bookingId.getText().trim());
                 services.getBookingService().rejectBooking(currentUser.getId(), id);
-                status.setText("Rejected.");
+                status.setText("Booking rejected.");
                 list.setItems(loadPending());
             } catch (Exception ex) {
                 status.setText("Reject failed: " + ex.getMessage());
             }
         });
 
-        HBox actions = new HBox(10, new Label("Booking ID:"), bookingId, approve, reject);
-        VBox root = new VBox(10, header("Pending Approvals"), refresh, list, actions, status);
-        root.setPadding(new Insets(10));
-        return root;
+        HBox actions = new HBox(15, new Label("Process ID:"), bookingId, approve, reject);
+        actions.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+
+        VBox content = new VBox(20, header("Awaiting Your Approval"), refresh, list, actions, status);
+        content.setPadding(new Insets(20));
+        content.getStyleClass().add("card");
+        return content;
     }
 
     private VBox createAuditPane() {
         ListView<String> list = new ListView<>();
-        Button refresh = new Button("Refresh");
+        list.setPrefHeight(450);
+        Button refresh = new Button("Update Logs");
+        refresh.getStyleClass().add("secondary");
         refresh.setOnAction(event -> list.setItems(loadAudit()));
         list.setItems(loadAudit());
-        VBox root = new VBox(10, header("Audit Log"), refresh, list);
-        root.setPadding(new Insets(10));
-        return root;
+
+        VBox content = new VBox(20, header("System Activity Log"), refresh, list);
+        content.setPadding(new Insets(20));
+        content.getStyleClass().add("card");
+        return content;
     }
 
     private Label header(String text) {
         Label label = new Label(text);
         label.getStyleClass().add("section-title");
         return label;
-    }
-
-    private ObservableList<String> loadResources() {
-        List<Resource> resources = services.getResourceService().listResources();
-        return FXCollections.observableArrayList(resources.stream()
-                .map(resource -> String.format("%d - %s (%s) $%.2f/hr Policies: %s/%s/%s",
-                        resource.getId(), resource.getName(), resource.getType(), resource.getBasePricePerHour(),
-                        resource.getPricingPolicyKey(), resource.getCancellationPolicyKey(),
-                        resource.getApprovalPolicyKey()))
-                .toList());
     }
 
     private ObservableList<String> loadBookings() {
