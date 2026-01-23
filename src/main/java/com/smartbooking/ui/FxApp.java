@@ -149,7 +149,8 @@ public class FxApp extends Application {
                 if (empty || item == null) {
                     setText(null);
                 } else {
-                    setText(item.getName() + " (" + item.getType() + ") - $" + String.format("%.2f", item.getBasePricePerHour()) + "/hr");
+                    setText(item.getName() + " (" + item.getType() + ") - $"
+                            + String.format("%.2f", item.getBasePricePerHour()) + "/hr");
                 }
             }
         });
@@ -161,8 +162,7 @@ public class FxApp extends Application {
         endTime.setPromptText("End");
 
         refresh.setOnAction(event -> resourceBox.setItems(FXCollections.observableArrayList(
-                services.getResourceService().listResources()
-        )));
+                services.getResourceService().listResources())));
 
         create.setOnAction(event -> {
             try {
@@ -178,8 +178,7 @@ public class FxApp extends Application {
                 Booking booking = services.getBookingService().createBooking(
                         currentUser.getId(),
                         resource.getId(),
-                        new Timeslot(startDateTime, endDateTime)
-                );
+                        new Timeslot(startDateTime, endDateTime));
                 status.setText("Created booking " + booking.getId() + " status " + booking.getStatus()
                         + " price $" + String.format("%.2f", booking.getPrice()));
             } catch (Exception ex) {
@@ -312,15 +311,17 @@ public class FxApp extends Application {
         return FXCollections.observableArrayList(resources.stream()
                 .map(resource -> String.format("%d - %s (%s) $%.2f/hr Policies: %s/%s/%s",
                         resource.getId(), resource.getName(), resource.getType(), resource.getBasePricePerHour(),
-                        resource.getPricingPolicyKey(), resource.getCancellationPolicyKey(), resource.getApprovalPolicyKey()))
+                        resource.getPricingPolicyKey(), resource.getCancellationPolicyKey(),
+                        resource.getApprovalPolicyKey()))
                 .toList());
     }
 
     private ObservableList<String> loadBookings() {
         List<Booking> bookings = services.getBookingService().listUserBookings(currentUser.getId());
         return FXCollections.observableArrayList(bookings.stream()
-                .map(booking -> String.format("%d - Resource %d %s -> %s | %s | $%.2f",
-                        booking.getId(), booking.getResourceId(),
+                .map(booking -> String.format("%d - User: %s | Room: %d | %s -> %s | %s | $%.2f",
+                        booking.getId(), booking.getUsername() != null ? booking.getUsername() : "Me",
+                        booking.getResourceId(),
                         DateTimeUtil.format(booking.getStartTime()), DateTimeUtil.format(booking.getEndTime()),
                         booking.getStatus(), booking.getPrice()))
                 .toList());
@@ -329,15 +330,16 @@ public class FxApp extends Application {
     private ObservableList<String> loadNotifications() {
         List<Notification> notifications = services.getNotificationService().getNotifications(currentUser.getId());
         return FXCollections.observableArrayList(notifications.stream()
-                .map(notification -> DateTimeUtil.format(notification.getCreatedAt()) + " - " + notification.getMessage())
+                .map(notification -> DateTimeUtil.format(notification.getCreatedAt()) + " - "
+                        + notification.getMessage())
                 .toList());
     }
 
     private ObservableList<String> loadPending() {
         List<Booking> bookings = services.getBookingService().listPendingBookings();
         return FXCollections.observableArrayList(bookings.stream()
-                .map(booking -> String.format("%d - User %d Resource %d %s -> %s",
-                        booking.getId(), booking.getUserId(), booking.getResourceId(),
+                .map(booking -> String.format("%d - User: %s (%d) | Room: %d | %s -> %s",
+                        booking.getId(), booking.getUsername(), booking.getUserId(), booking.getResourceId(),
                         DateTimeUtil.format(booking.getStartTime()), DateTimeUtil.format(booking.getEndTime())))
                 .toList());
     }
@@ -345,7 +347,8 @@ public class FxApp extends Application {
     private ObservableList<String> loadAudit() {
         List<AuditLog> logs = services.getAuditService().listLogs();
         return FXCollections.observableArrayList(logs.stream()
-                .map(log -> DateTimeUtil.format(log.getCreatedAt()) + " | User " + log.getUserId() + " | " + log.getAction() + " | " + log.getDetails())
+                .map(log -> DateTimeUtil.format(log.getCreatedAt()) + " | User " + log.getUserId() + " | "
+                        + log.getAction() + " | " + log.getDetails())
                 .toList());
     }
 
@@ -354,4 +357,5 @@ public class FxApp extends Application {
                 .mapToObj(hour -> LocalTime.of(hour, 0))
                 .toList());
     }
+
 }
