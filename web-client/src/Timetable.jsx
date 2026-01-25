@@ -151,6 +151,7 @@ function Timetable({ bookings, onSelectSlot, viewDate, onNavigate, currentUserId
                         {/* Slots background */}
                         {Array.from({ length: END_HOUR - START_HOUR }).map((_, hIndex) => {
                             const hour = START_HOUR + hIndex
+                            const isPeak = hour >= 15 && hour < 22
 
                             // Check if this slot is selected
                             let isSelected = false
@@ -165,18 +166,19 @@ function Timetable({ bookings, onSelectSlot, viewDate, onNavigate, currentUserId
                                     key={hour}
                                     onMouseDown={() => handleMouseDown(dayIndex, hour)}
                                     onMouseEnter={() => handleMouseEnter(dayIndex, hour)}
-                                    // MouseUp is global, but we can also attach here for safety
                                     onMouseUp={handleMouseUp}
                                     style={{
                                         height: '50px',
                                         borderBottom: '1px solid #f3f4f6',
-                                        cursor: isSlotOccupied(days[dayIndex], hour) ? 'not-allowed' : 'pointer', // Cursor indication
+                                        cursor: isSlotOccupied(days[dayIndex], hour) ? 'not-allowed' : 'pointer',
                                         background: isSelected
-                                            ? (isValidSelection ? 'rgba(139, 92, 246, 0.2)' : 'rgba(239, 68, 68, 0.2)') // Red if invalid
-                                            : 'transparent',
-                                        transition: 'background 0.1s'
+                                            ? (isValidSelection ? 'rgba(139, 92, 246, 0.2)' : 'rgba(239, 68, 68, 0.2)')
+                                            : (isPeak ? '#fff7ed' : 'transparent'),
+                                        transition: 'background 0.1s',
+                                        // Final slot border fix
+                                        ...(hour === END_HOUR - 1 ? { borderBottom: '1px solid #e5e7eb' } : {})
                                     }}
-                                    className={!isSelected ? "timetable-slot hover:bg-gray-50 transition-colors" : ""}
+                                    className={`${!isSelected ? "timetable-slot" : ""} ${!isSelected && !isPeak ? "hover:bg-gray-50" : ""} transition-colors`}
                                 />
                             )
                         })}

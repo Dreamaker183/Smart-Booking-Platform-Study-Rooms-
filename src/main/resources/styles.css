@@ -168,6 +168,14 @@
     -fx-border-width: 0 0 1 1;
 }
 
+.slot-peak {
+    -fx-background-color: #fff7ed;
+}
+
+.slot-selecting {
+    -fx-background-color: rgba(139, 92, 246, 0.2);
+}
+
 .booking-block {
     -fx-background-radius: 8;
     -fx-padding: 6;

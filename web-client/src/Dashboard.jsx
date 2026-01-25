@@ -280,11 +280,54 @@ function Dashboard({ user }) {
                         {resources.map(r => (
                             <option key={r.id} value={r.id}>
                                 {r.name} — ${r.basePricePerHour}/hr
-                                {r.approvalPolicyKey === 'ADMIN_APPROVAL' ? ' (Approval Required)' : ''}
+                                {r.approvalPolicyKey === 'ADMIN_REQUIRED' ? ' (Approval Required)' : ''}
                             </option>
                         ))}
                     </select>
                 </div>
+
+                {selectedResource && (
+                    <div style={{
+                        display: 'flex',
+                        gap: '15px',
+                        marginBottom: '20px',
+                        padding: '12px 20px',
+                        background: '#f8fafc',
+                        borderRadius: '12px',
+                        border: '1px solid #e2e8f0',
+                        fontSize: '0.85em'
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#64748b' }}>
+                            <DollarSign size={14} color="#8b5cf6" />
+                            <strong>Pricing:</strong> {
+                                {
+                                    'PEAK_HOURS': '1.2x during peak (18:00-22:00)',
+                                    'WEEKEND': '1.15x on weekends',
+                                    'PEAK_WEEKEND': 'Peak + Weekend surcharges apply',
+                                    'DEFAULT': 'Standard hourly rate'
+                                }[resources.find(r => r.id === selectedResource)?.pricingPolicyKey] || 'Standard pricing'
+                            }
+                        </div>
+                        <div style={{ width: '1px', background: '#e2e8f0' }} />
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#64748b' }}>
+                            <AlertCircle size={14} color="#f59e0b" />
+                            <strong>Cancellation:</strong> {
+                                resources.find(r => r.id === selectedResource)?.cancellationPolicyKey === 'STRICT'
+                                    ? 'No refunds allowed'
+                                    : 'Flexible (Full refund if cancelled)'
+                            }
+                        </div>
+                        <div style={{ width: '1px', background: '#e2e8f0' }} />
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#64748b' }}>
+                            <CheckCircle size={14} color="#10b981" />
+                            <strong>Approval:</strong> {
+                                resources.find(r => r.id === selectedResource)?.approvalPolicyKey === 'ADMIN_REQUIRED'
+                                    ? 'Requires admin review'
+                                    : 'Instant confirmation'
+                            }
+                        </div>
+                    </div>
+                )}
 
                 <Timetable
                     bookings={activeResourceBookings}
@@ -301,10 +344,41 @@ function Dashboard({ user }) {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: '30px', alignItems: 'start' }}>
 
                 {/* Booking Form */}
-                <section className="card">
-                    <h3 style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#111827' }}>
+                <section className="card" style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                    <h3 style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#111827', margin: 0 }}>
                         <Calendar size={20} color="#8b5cf6" /> New Booking
                     </h3>
+
+                    {selectedResource && (
+                        <div style={{
+                            width: '100%',
+                            height: '180px',
+                            background: '#f1f5f9',
+                            borderRadius: '12px',
+                            overflow: 'hidden',
+                            position: 'relative'
+                        }}>
+                            <img
+                                src={`/resource/${resources.find(r => r.id === selectedResource)?.name}.png`}
+                                alt="Room Thumbnail"
+                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
+                            />
+                            <div style={{
+                                display: 'none',
+                                position: 'absolute',
+                                inset: 0,
+                                background: '#e2e8f0',
+                                color: '#94a3b8',
+                                justifyContent: 'center',
+                                alignItems: 'center',
+                                fontSize: '0.9em'
+                            }}>
+                                Photos coming soon
+                            </div>
+                        </div>
+                    )}
+
                     {msg && (
                         <div style={{
                             padding: '10px', borderRadius: '8px', marginBottom: '15px',
@@ -319,7 +393,7 @@ function Dashboard({ user }) {
                     <form onSubmit={handleBooking} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                         <p style={{ fontSize: '0.9em', color: '#6b7280', display: 'flex', alignItems: 'center', gap: '8px' }}>
                             Booking for: <strong style={{ color: '#111827' }}>{resources.find(r => r.id === selectedResource)?.name}</strong>
-                            {resources.find(r => r.id === selectedResource)?.approvalPolicyKey === 'ADMIN_APPROVAL' && (
+                            {resources.find(r => r.id === selectedResource)?.approvalPolicyKey === 'ADMIN_REQUIRED' && (
                                 <span style={{
                                     background: '#fee2e2',
                                     color: '#b91c1c',

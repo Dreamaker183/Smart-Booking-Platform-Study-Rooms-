@@ -128,6 +128,9 @@ public class TimetablePane extends VBox {
                 Pane slot = new Pane();
                 slot.setPrefHeight(SLOT_HEIGHT);
                 slot.getStyleClass().add("timetable-slot");
+                if (h >= 15) {
+                    slot.getStyleClass().add("slot-peak");
+                }
 
                 slot.setOnMousePressed(e -> {
                     clearSelection();

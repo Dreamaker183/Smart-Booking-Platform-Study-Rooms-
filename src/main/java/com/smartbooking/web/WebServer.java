@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.smartbooking.domain.Booking;
-import com.smartbooking.domain.Resource;
 import com.smartbooking.domain.Timeslot;
 import com.smartbooking.domain.User;
 import com.smartbooking.service.AppBootstrap;
@@ -14,7 +13,6 @@ import io.javalin.http.Context;
 import io.javalin.json.JavalinJackson;
 
 import java.time.LocalDateTime;
-import java.util.Map;
 
 public class WebServer {
 
