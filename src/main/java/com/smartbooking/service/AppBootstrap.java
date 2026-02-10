@@ -32,9 +32,9 @@ public class AppBootstrap {
                 stateFactory,
                 notificationService,
                 paymentService,
-                auditService
-        );
+                auditService);
 
-        return new AppServices(authService, resourceService, bookingService, notificationService, auditService);
+        return new AppServices(userRepository, authService, resourceService, bookingService, notificationService,
+                auditService);
     }
 }

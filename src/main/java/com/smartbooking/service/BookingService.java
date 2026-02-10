@@ -49,9 +49,11 @@ public class BookingService {
         }
         Resource resource = resourceRepository.findById(resourceId)
                 .orElseThrow(() -> new IllegalArgumentException("Resource not found"));
+
         if (!bookingRepository.findOverlaps(resourceId, timeslot.getStart(), timeslot.getEnd()).isEmpty()) {
             throw new IllegalStateException("Requested timeslot conflicts with existing booking");
         }
+
         double hours = Duration.between(timeslot.getStart(), timeslot.getEnd()).toMinutes() / 60.0;
         double basePrice = hours * resource.getBasePricePerHour();
         PricingPolicy pricingPolicy = policyFactory.createPricingPolicy(resource.getPricingPolicyKey());
@@ -59,7 +61,9 @@ public class BookingService {
 
         Booking booking = bookingFactory.create(userId, resourceId, timeslot.getStart(), timeslot.getEnd(), price,
                 BookingStatus.REQUESTED);
+
         Booking saved = bookingRepository.create(booking);
+
         saved.addObserver(notificationService);
 
         ApprovalPolicy approvalPolicy = policyFactory.createApprovalPolicy(resource.getApprovalPolicyKey());
@@ -129,6 +133,40 @@ public class BookingService {
 
     public List<Booking> listBookingsForResource(long resourceId, LocalDateTime start, LocalDateTime end) {
         return bookingRepository.findActiveByResource(resourceId, start, end);
+    }
+
+    public void updateBooking(long adminId, long bookingId, LocalDateTime start, LocalDateTime end) {
+        Booking booking = loadBooking(bookingId);
+
+        // Basic time validation
+        if (start.isAfter(end) || start.isEqual(end)) {
+            throw new IllegalArgumentException("Start time must be before end time");
+        }
+
+        // Check for conflicts (excluding the current booking itself)
+        List<Booking> overlaps = bookingRepository.findOverlaps(booking.getResourceId(), start, end);
+        boolean hasConflict = overlaps.stream().anyMatch(b -> b.getId() != bookingId);
+        if (hasConflict) {
+            throw new IllegalStateException("New timeslot conflicts with existing booking");
+        }
+
+        // Recalculate price
+        Resource resource = resourceRepository.findById(booking.getResourceId())
+                .orElseThrow(() -> new IllegalArgumentException("Resource not found"));
+        double hours = Duration.between(start, end).toMinutes() / 60.0;
+        double basePrice = hours * resource.getBasePricePerHour();
+        PricingPolicy pricingPolicy = policyFactory.createPricingPolicy(resource.getPricingPolicyKey());
+        double price = pricingPolicy.calculatePrice(resource, new Timeslot(start, end), basePrice);
+
+        // Update persistence
+        bookingRepository.updateTimes(bookingId, start, end, price);
+        auditService.log(adminId, "BOOKING_UPDATED",
+                "Booking " + bookingId + " updated to " + start + " - " + end + " (Price: " + price + ")");
+    }
+
+    public void deleteBooking(long adminId, long bookingId) {
+        bookingRepository.delete(bookingId);
+        auditService.log(adminId, "BOOKING_DELETED", "Booking " + bookingId + " deleted by admin");
     }
 
     private Booking loadBooking(long bookingId) {

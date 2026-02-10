@@ -1,16 +1,22 @@
 package com.smartbooking.web;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.smartbooking.domain.Booking;
 import com.smartbooking.domain.Timeslot;
+import com.smartbooking.domain.Role;
 import com.smartbooking.domain.User;
 import com.smartbooking.service.AppBootstrap;
 import com.smartbooking.service.AppServices;
 import io.javalin.Javalin;
 import io.javalin.http.Context;
 import io.javalin.json.JavalinJackson;
+import io.javalin.http.ForbiddenResponse;
+import io.javalin.http.UnauthorizedResponse;
+import java.util.stream.Collectors;
+import java.util.List;
 
 import java.time.LocalDateTime;
 
@@ -18,12 +24,13 @@ public class WebServer {
 
     private static AppServices services;
 
-    public static void main(String[] args) {
-        services = AppBootstrap.initialize();
+    public static void start(AppServices appServices, int port) {
+        services = appServices;
 
         ObjectMapper mapper = new ObjectMapper();
         mapper.registerModule(new JavaTimeModule());
         mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+        mapper.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
 
         Javalin app = Javalin.create(config -> {
             config.jsonMapper(new JavalinJackson(mapper, false));
@@ -32,7 +39,29 @@ public class WebServer {
                     it.anyHost();
                 });
             });
-        }).start(8080);
+        }).start(port);
+
+        // Security Filter
+        app.before("/api/*", ctx -> {
+            String path = ctx.path();
+            if (path.equals("/api/auth/login") || path.equals("/api/auth/register")) {
+                return;
+            }
+
+            String userIdStr = ctx.header("X-User-Id");
+            if (userIdStr == null || userIdStr.isBlank()) {
+                throw new UnauthorizedResponse("Missing authentication header");
+            }
+
+            try {
+                long userId = Long.parseLong(userIdStr);
+                User user = services.getUserRepository().findById(userId)
+                        .orElseThrow(() -> new Exception("User not found"));
+                ctx.attribute("user", user);
+            } catch (Exception e) {
+                throw new UnauthorizedResponse("Invalid session");
+            }
+        });
 
         // Auth
         app.post("/api/auth/register", WebServer::handleRegister);
@@ -52,8 +81,33 @@ public class WebServer {
         app.post("/api/bookings/{id}/pay", WebServer::handlePayBooking);
         app.post("/api/bookings/{id}/cancel", WebServer::handleCancelBooking);
 
-        // Audit
-        app.get("/api/audit", WebServer::handleListAuditLogs);
+        // Admin Actions
+        app.post("/api/admin/bookings/{id}/update", ctx -> {
+            checkAdmin(ctx);
+            WebServer.handleUpdateBooking(ctx);
+        });
+        app.post("/api/admin/bookings/{id}/delete", ctx -> {
+            checkAdmin(ctx);
+            WebServer.handleDeleteBooking(ctx);
+        });
+
+        // Secured Audit
+        app.get("/api/audit", ctx -> {
+            checkAdmin(ctx);
+            WebServer.handleListAuditLogs(ctx);
+        });
+    }
+
+    private static void checkAdmin(Context ctx) {
+        User user = ctx.attribute("user");
+        if (user == null || user.getRole() != Role.ADMIN) {
+            throw new ForbiddenResponse("Admin access required");
+        }
+    }
+
+    public static void main(String[] args) {
+        AppServices services = AppBootstrap.initialize();
+        start(services, 8080);
     }
 
     // --- Handlers ---
@@ -75,32 +129,36 @@ public class WebServer {
     }
 
     private static void handleListMyBookings(Context ctx) {
-        long userId = Long.parseLong(ctx.queryParam("userId"));
-        ctx.json(services.getBookingService().listUserBookings(userId));
+        User user = ctx.attribute("user");
+        ctx.json(services.getBookingService().listUserBookings(user.getId()));
     }
 
     private static void handleListPendingBookings(Context ctx) {
+        checkAdmin(ctx);
         ctx.json(services.getBookingService().listPendingBookings());
     }
 
     private static void handleCreateBooking(Context ctx) {
+        User user = ctx.attribute("user");
         CreateBookingRequest req = ctx.bodyAsClass(CreateBookingRequest.class);
         Booking booking = services.getBookingService().createBooking(
-                req.userId, req.resourceId, new Timeslot(req.start, req.end));
+                user.getId(), req.resourceId, new Timeslot(req.start, req.end));
         ctx.json(booking);
     }
 
     private static void handleApproveBooking(Context ctx) {
         long bookingId = Long.parseLong(ctx.pathParam("id"));
-        long adminId = Long.parseLong(ctx.queryParam("adminId"));
-        services.getBookingService().approveBooking(adminId, bookingId);
+        User admin = ctx.attribute("user");
+        checkAdmin(ctx);
+        services.getBookingService().approveBooking(admin.getId(), bookingId);
         ctx.status(200);
     }
 
     private static void handleRejectBooking(Context ctx) {
         long bookingId = Long.parseLong(ctx.pathParam("id"));
-        long adminId = Long.parseLong(ctx.queryParam("adminId"));
-        services.getBookingService().rejectBooking(adminId, bookingId);
+        User admin = ctx.attribute("user");
+        checkAdmin(ctx);
+        services.getBookingService().rejectBooking(admin.getId(), bookingId);
         ctx.status(200);
     }
 
@@ -131,10 +189,42 @@ public class WebServer {
             long resourceId = Long.parseLong(resourceIdStr);
             LocalDateTime start = LocalDateTime.parse(startStr);
             LocalDateTime end = LocalDateTime.parse(endStr);
-            ctx.json(services.getBookingService().listBookingsForResource(resourceId, start, end));
+
+            List<Booking> bookings = services.getBookingService().listBookingsForResource(resourceId, start, end);
+
+            // Data Privacy: Redact usernames for non-admin users
+            User currentUser = ctx.attribute("user");
+            if (currentUser.getRole() != Role.ADMIN) {
+                bookings = bookings.stream().map(b -> {
+                    if (b.getUserId() != currentUser.getId()) {
+                        return new Booking(b.getId(), b.getUserId(), "Occupied", b.getResourceId(),
+                                b.getStartTime(), b.getEndTime(), b.getPrice(), b.getStatus(), b.getCreatedAt());
+                    }
+                    return b;
+                }).collect(Collectors.toList());
+            }
+
+            ctx.json(bookings);
         } else {
             ctx.status(501);
         }
+    }
+
+    private static void handleUpdateBooking(Context ctx) {
+        long bookingId = Long.parseLong(ctx.pathParam("id"));
+        User admin = ctx.attribute("user");
+        // checkAdmin is already called in the lambda route
+        UpdateBookingRequest req = ctx.bodyAsClass(UpdateBookingRequest.class);
+        services.getBookingService().updateBooking(admin.getId(), bookingId, req.start, req.end);
+        ctx.status(200);
+    }
+
+    private static void handleDeleteBooking(Context ctx) {
+        long bookingId = Long.parseLong(ctx.pathParam("id"));
+        User admin = ctx.attribute("user");
+        // checkAdmin is already called in the lambda route
+        services.getBookingService().deleteBooking(admin.getId(), bookingId);
+        ctx.status(200);
     }
 
     // --- DTOs ---
@@ -145,7 +235,6 @@ public class WebServer {
     }
 
     private static class CreateBookingRequest {
-        public long userId;
         public long resourceId;
         public LocalDateTime start;
         public LocalDateTime end;
@@ -154,5 +243,10 @@ public class WebServer {
     private static class PayRequest {
         public long userId;
         public String method;
+    }
+
+    private static class UpdateBookingRequest {
+        public LocalDateTime start;
+        public LocalDateTime end;
     }
 }

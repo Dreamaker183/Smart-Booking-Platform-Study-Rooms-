@@ -51,7 +51,32 @@ public class BookingRepository {
             stmt.setLong(2, bookingId);
             stmt.executeUpdate();
         } catch (SQLException ex) {
-            throw new IllegalStateException("Failed to update booking", ex);
+            throw new IllegalStateException("Failed to update booking status", ex);
+        }
+    }
+
+    public void updateTimes(long bookingId, LocalDateTime start, LocalDateTime end, double price) {
+        String sql = "UPDATE bookings SET start_time = ?, end_time = ?, price = ? WHERE id = ?";
+        try (Connection connection = database.getConnection();
+                PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, start.toString());
+            stmt.setString(2, end.toString());
+            stmt.setDouble(3, price);
+            stmt.setLong(4, bookingId);
+            stmt.executeUpdate();
+        } catch (SQLException ex) {
+            throw new IllegalStateException("Failed to update booking times", ex);
+        }
+    }
+
+    public void delete(long bookingId) {
+        String sql = "DELETE FROM bookings WHERE id = ?";
+        try (Connection connection = database.getConnection();
+                PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setLong(1, bookingId);
+            stmt.executeUpdate();
+        } catch (SQLException ex) {
+            throw new IllegalStateException("Failed to delete booking", ex);
         }
     }
 

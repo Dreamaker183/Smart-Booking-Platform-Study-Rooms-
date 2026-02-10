@@ -115,6 +115,18 @@ public class DatabaseInitializer {
                 "PEAK_WEEKEND", "FLEXIBLE", "AUTO");
         insertResource(connection, "Room J", ResourceType.STUDY_ROOM_LARGE, 13.0,
                 "WEEKEND", "STRICT", "ADMIN_REQUIRED");
+
+        // New Resources
+        insertResource(connection, "MacBook Pro 16", ResourceType.EQUIPMENT, 5.0,
+                "DEFAULT", "FLEXIBLE", "AUTO");
+        insertResource(connection, "Sony A7S III", ResourceType.EQUIPMENT, 15.0,
+                "PEAK_WEEKEND", "STRICT", "ADMIN_REQUIRED");
+        insertResource(connection, "Computer Lab A", ResourceType.COMPUTER_LAB, 20.0,
+                "DEFAULT", "STRICT", "ADMIN_REQUIRED");
+        insertResource(connection, "Recording Studio", ResourceType.STUDIO, 30.0,
+                "PEAK_WEEKEND", "STRICT", "ADMIN_REQUIRED");
+        insertResource(connection, "Music Room 101", ResourceType.MUSIC_ROOM, 10.0,
+                "DEFAULT", "FLEXIBLE", "AUTO");
     }
 
     private boolean isSeeded(Connection connection) throws SQLException {
@@ -135,7 +147,7 @@ public class DatabaseInitializer {
     }
 
     private void insertResource(Connection connection, String name, ResourceType type, double basePrice,
-                                String pricingPolicy, String cancellationPolicy, String approvalPolicy) throws SQLException {
+            String pricingPolicy, String cancellationPolicy, String approvalPolicy) throws SQLException {
         try (PreparedStatement stmt = connection.prepareStatement(
                 "INSERT INTO resources (name, type, base_price, pricing_policy, cancellation_policy, approval_policy) VALUES (?, ?, ?, ?, ?, ?)")) {
             stmt.setString(1, name);

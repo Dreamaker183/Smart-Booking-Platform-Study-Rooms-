@@ -43,7 +43,7 @@ cd web-client
 npm install
 npm run dev
 ```
-The backend server (WebServer.java) must be running for the web client to function.
+The backend server starts automatically on port 8080 when you run the main application (`com.smartbooking.App`). Both the JavaFX GUI and the CLI modes will start the web server in the background.
 
 ## Default Accounts
 - Admin: `admin` / `admin123`
@@ -77,6 +77,78 @@ Includes policy tests, state transition tests, and conflict detection tests.
 - Factory: policy creation and booking creation
 - Observer: booking notifications
 - DAO/Repository: persistence layer
+
+## System Architecture (UML)
+
+```mermaid
+classDiagram
+    class Domain_Entities {
+        <<Namespace>>
+    }
+    class User {
+        +long id (PK)
+        +String username
+        -String passwordHash
+        +Role role
+    }
+    class Resource {
+        +long id (PK)
+        +String name
+        +ResourceType type
+        +double basePricePerHour
+    }
+    class Booking {
+        +long id (PK)
+        +long userId
+        +long resourceId
+        +LocalDateTime startTime
+        +LocalDateTime endTime
+        +double price
+        +BookingStatus status
+        +transitionTo(newStatus)
+    }
+
+    class App {
+        +main(args)
+    }
+    class AppBootstrap {
+        +initialize() AppServices
+    }
+    class AppServices {
+        -UserRepository userRepository
+        -AuthService authService
+        -BookingService bookingService
+        +getUserRepository() UserRepository
+        +getAuthService() AuthService
+        +getBookingService() BookingService
+    }
+    class WebServer {
+        -AppServices services
+        +start(appServices, port)
+    }
+    class AuthService {
+        -UserRepository userRepository
+        +login(username, password) User
+        +register(username, password) User
+    }
+    class BookingService {
+        -BookingRepository bookingRepo
+        -ResourceRepository resourceRepo
+        +createBooking(userId, resId, timeslot) Booking
+        +updateBooking(adminId, bookingId, start, end)
+        +deleteBooking(adminId, bookingId)
+    }
+
+    App ..> AppBootstrap : initializes
+    App ..> WebServer : starts
+    AppBootstrap ..> AppServices : creates
+    WebServer o-- AppServices : uses
+    AppServices o-- AuthService
+    AppServices o-- BookingService
+    AuthService --> User : returns
+    BookingService --> Booking : manages
+    BookingService --> Resource : uses
+```
 
 ## Notes for Assignment
 - Layered architecture with domain, service, persistence, and UI

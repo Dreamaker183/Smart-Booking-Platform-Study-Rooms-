@@ -5,9 +5,9 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 const START_HOUR = 8 // 8 AM
 const END_HOUR = 22 // 10 PM
-const DAYS_TO_SHOW = 5
+const DAYS_TO_SHOW = 7
 
-function Timetable({ bookings, onSelectSlot, viewDate, onNavigate, currentUserId }) {
+function Timetable({ bookings, onSelectSlot, onEditBooking, viewDate, onNavigate, currentUserId, isAdmin }) {
     const days = useMemo(() => Array.from({ length: DAYS_TO_SHOW }).map((_, i) => addDays(startOfDay(viewDate), i)), [viewDate])
 
     // Drag Selection State
@@ -122,10 +122,7 @@ function Timetable({ bookings, onSelectSlot, viewDate, onNavigate, currentUserId
                 display: 'flex',
                 border: '1px solid #e5e7eb',
                 borderRadius: '16px',
-                overflow: 'hidden',
                 background: 'white',
-                maxHeight: '400px',
-                overflowY: 'auto',
                 userSelect: 'none' // Prevent text selection during drag
             }}>
 
@@ -214,6 +211,7 @@ function Timetable({ bookings, onSelectSlot, viewDate, onNavigate, currentUserId
                                         key={b.id}
                                         initial={{ opacity: 0, scale: 0.9 }}
                                         animate={{ opacity: 1, scale: 1 }}
+                                        onClick={() => isAdmin && onEditBooking && onEditBooking(b)}
                                         style={{
                                             position: 'absolute',
                                             top: `${startMinutes * pxPerMin}px`,
@@ -226,7 +224,8 @@ function Timetable({ bookings, onSelectSlot, viewDate, onNavigate, currentUserId
                                             padding: '2px 4px',
                                             overflow: 'hidden',
                                             zIndex: 5,
-                                            pointerEvents: 'none',
+                                            pointerEvents: isAdmin ? 'auto' : 'none',
+                                            cursor: isAdmin ? 'pointer' : 'default',
                                             display: 'flex',
                                             flexDirection: 'column',
                                             justifyContent: 'center'

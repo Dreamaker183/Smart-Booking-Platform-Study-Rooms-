@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
-import { Routes, Route, useNavigate, useLocation } from 'react-router-dom'
-import { Monitor, LogOut, User as UserIcon } from 'lucide-react'
+import { Routes, Route, useNavigate, useLocation, useParams } from 'react-router-dom'
+import { Monitor, LogOut, User as UserIcon, Home, LayoutGrid } from 'lucide-react'
 import Login from './Login'
 import Register from './Register'
 import Dashboard from './Dashboard'
+import ResourceTypeSelection from './ResourceTypeSelection'
 
 function App() {
   const [user, setUser] = useState(null)
@@ -40,6 +41,9 @@ function App() {
     )
   }
 
+  const isOnDashboard = location.pathname.startsWith('/dashboard/')
+  const isOnHome = location.pathname === '/' || location.pathname === '/dashboard'
+
   return (
     <div style={{ display: 'flex', minHeight: '100vh', textAlign: 'left', background: '#f9fafb' }}>
       {/* Sidebar */}
@@ -52,7 +56,10 @@ function App() {
         flexDirection: 'column',
         boxShadow: '4px 0 24px rgba(0,0,0,0.02)'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '40px', paddingLeft: '8px' }}>
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '40px', paddingLeft: '8px',
+          cursor: 'pointer'
+        }} onClick={() => navigate('/')}>
           <div style={{
             width: '32px', height: '32px', borderRadius: '8px',
             background: 'linear-gradient(135deg, #8b5cf6, #ec4899)'
@@ -63,7 +70,21 @@ function App() {
         </div>
 
         <nav style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: 1 }}>
-          <NavItem icon={<Monitor size={20} />} label="Dashboard" active={true} />
+          {user.role !== 'ADMIN' && (
+            <NavItem
+              icon={<Home size={20} />}
+              label="Browse Resources"
+              active={isOnHome}
+              onClick={() => navigate('/')}
+            />
+          )}
+          {isOnDashboard && (
+            <NavItem
+              icon={<LayoutGrid size={20} />}
+              label="Current Dashboard"
+              active={true}
+            />
+          )}
         </nav>
 
         <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '20px' }}>
@@ -96,25 +117,35 @@ function App() {
       {/* Main Content */}
       <main style={{ flex: 1, padding: '40px', overflowY: 'auto', height: '100vh', boxSizing: 'border-box' }}>
         <Routes>
-          <Route path="/dashboard" element={<Dashboard user={user} />} />
-          <Route path="/" element={<Dashboard user={user} />} />
+          <Route path="/" element={user.role === 'ADMIN' ? <Dashboard user={user} resourceType="ALL" /> : <ResourceTypeSelection user={user} />} />
+          <Route path="/dashboard" element={user.role === 'ADMIN' ? <Dashboard user={user} resourceType="ALL" /> : <ResourceTypeSelection user={user} />} />
+          <Route path="/dashboard/:resourceType" element={<DashboardWrapper user={user} />} />
         </Routes>
       </main>
     </div>
   )
 }
 
-function NavItem({ icon, label, active }) {
+// Wrapper to extract route param and pass to Dashboard
+function DashboardWrapper({ user }) {
+  const { resourceType } = useParams()
+  return <Dashboard user={user} resourceType={resourceType} />
+}
+
+function NavItem({ icon, label, active, onClick }) {
   return (
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: '12px',
-      padding: '12px 16px', borderRadius: '12px',
-      background: active ? '#f5f3ff' : 'transparent',
-      color: active ? '#7c3aed' : '#6b7280',
-      cursor: 'pointer',
-      transition: 'all 0.2s',
-      fontWeight: active ? '600' : '400'
-    }}>
+    <div
+      onClick={onClick}
+      style={{
+        display: 'flex', alignItems: 'center', gap: '12px',
+        padding: '12px 16px', borderRadius: '12px',
+        background: active ? '#f5f3ff' : 'transparent',
+        color: active ? '#7c3aed' : '#6b7280',
+        cursor: 'pointer',
+        transition: 'all 0.2s',
+        fontWeight: active ? '600' : '400'
+      }}
+    >
       {icon}
       <span>{label}</span>
     </div>
