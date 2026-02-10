@@ -24,7 +24,7 @@ public class DatabaseInitializer {
         private void createTables(Connection connection) throws SQLException {
                 connection.createStatement().executeUpdate("""
                                 CREATE TABLE IF NOT EXISTS users (
-                                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                    id SERIAL PRIMARY KEY,
                                     username TEXT UNIQUE NOT NULL,
                                     password_hash TEXT NOT NULL,
                                     role TEXT NOT NULL
@@ -32,10 +32,10 @@ public class DatabaseInitializer {
                                 """);
                 connection.createStatement().executeUpdate("""
                                 CREATE TABLE IF NOT EXISTS resources (
-                                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                    id SERIAL PRIMARY KEY,
                                     name TEXT NOT NULL,
                                     type TEXT NOT NULL,
-                                    base_price REAL NOT NULL,
+                                    base_price DOUBLE PRECISION NOT NULL,
                                     pricing_policy TEXT NOT NULL,
                                     cancellation_policy TEXT NOT NULL,
                                     approval_policy TEXT NOT NULL
@@ -43,12 +43,12 @@ public class DatabaseInitializer {
                                 """);
                 connection.createStatement().executeUpdate("""
                                 CREATE TABLE IF NOT EXISTS bookings (
-                                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                    id SERIAL PRIMARY KEY,
                                     user_id INTEGER NOT NULL,
                                     resource_id INTEGER NOT NULL,
                                     start_time TEXT NOT NULL,
                                     end_time TEXT NOT NULL,
-                                    price REAL NOT NULL,
+                                    price DOUBLE PRECISION NOT NULL,
                                     status TEXT NOT NULL,
                                     created_at TEXT NOT NULL,
                                     FOREIGN KEY (user_id) REFERENCES users(id),
@@ -57,9 +57,9 @@ public class DatabaseInitializer {
                                 """);
                 connection.createStatement().executeUpdate("""
                                 CREATE TABLE IF NOT EXISTS payments (
-                                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                    id SERIAL PRIMARY KEY,
                                     booking_id INTEGER NOT NULL,
-                                    amount REAL NOT NULL,
+                                    amount DOUBLE PRECISION NOT NULL,
                                     method TEXT NOT NULL,
                                     status TEXT NOT NULL,
                                     created_at TEXT NOT NULL,
@@ -68,7 +68,7 @@ public class DatabaseInitializer {
                                 """);
                 connection.createStatement().executeUpdate("""
                                 CREATE TABLE IF NOT EXISTS notifications (
-                                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                    id SERIAL PRIMARY KEY,
                                     user_id INTEGER NOT NULL,
                                     message TEXT NOT NULL,
                                     created_at TEXT NOT NULL,
@@ -77,7 +77,7 @@ public class DatabaseInitializer {
                                 """);
                 connection.createStatement().executeUpdate("""
                                 CREATE TABLE IF NOT EXISTS audit_log (
-                                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                    id SERIAL PRIMARY KEY,
                                     user_id INTEGER NOT NULL,
                                     action TEXT NOT NULL,
                                     details TEXT NOT NULL,

@@ -18,23 +18,39 @@ University-scale booking system for study rooms with dynamic pricing, approvals,
 
 ## Tech Stack
 - Java 17
-- SQLite (JDBC)
+- PostgreSQL (Docker)
 - Maven (fat JAR via Shade)
 - JUnit 5
+
 ## Project Structure
 ```
 src/                              # Java Source
 web-client/                       # React Web Client (Vite)
 pom.xml                           # Maven Configuration
-smart_booking.db                  # SQLite Database
 ```
 
-## Build
+## Prerequisites
+- Java 17+
+- Docker (for PostgreSQL)
+- Node.js & npm (for Web Client)
+
+## Build & Run
+
+### 1. Start Database
+```bash
+docker run --name smart-booking-db -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=smart_booking -p 5432:5432 -d postgres:15
 ```
+
+### 2. Build Backend
+```bash
 mvn clean package
 ```
 
-Database file `smart_booking.db` will be created in the project root on first run.
+### 3. Run Backend
+```bash
+mvn exec:java -Dexec.mainClass="com.smartbooking.web.WebServer"
+```
+The database will be automatically seeded with ~60 resources (Study Rooms, Equipment, Labs, Studios) on first run.
 
 ## Web Client Setup
 The web client is located in the `web-client` directory.
@@ -43,7 +59,6 @@ cd web-client
 npm install
 npm run dev
 ```
-The backend server starts automatically on port 8080 when you run the main application (`com.smartbooking.App`). Both the JavaFX GUI and the CLI modes will start the web server in the background.
 
 ## Default Accounts
 - Admin: `admin` / `admin123`
@@ -66,10 +81,10 @@ Resources are configured with policy keys in `resources` table.
 Illegal transitions throw an exception.
 
 ## Tests
-```
+```bash
 mvn test
 ```
-Includes policy tests, state transition tests, and conflict detection tests.
+Includes policy tests, state transition tests, and conflict detection tests (using in-memory SQLite).
 
 ## Design Patterns
 - Strategy: pricing/approval/cancellation policies
@@ -153,4 +168,4 @@ classDiagram
 ## Notes for Assignment
 - Layered architecture with domain, service, persistence, and UI
 - SOLID principles demonstrated by modular services and pluggable policies
-- Seed data provides 10 study rooms + sample users
+- Seed data generates a realistic dataset of >50 resources across multiple categories.

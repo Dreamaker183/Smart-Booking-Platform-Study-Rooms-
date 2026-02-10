@@ -23,7 +23,7 @@ public class ConflictDetectionTests {
 
     @BeforeEach
     void setup() throws Exception {
-        database = new Database("jdbc:sqlite:file:memdb1?mode=memory&cache=shared");
+        database = new Database("jdbc:sqlite:file:memdb1?mode=memory&cache=shared", null, null);
         keepAlive = database.getConnection();
         new DatabaseInitializer().initialize(database);
 
@@ -42,8 +42,7 @@ public class ConflictDetectionTests {
                 new BookingStateFactory(),
                 new NotificationService(notificationRepo),
                 new PaymentService(paymentRepo),
-                new AuditService(auditRepo)
-        );
+                new AuditService(auditRepo));
         resourceRepository = resourceRepo;
         userRepository = userRepo;
     }
@@ -63,7 +62,7 @@ public class ConflictDetectionTests {
 
         LocalDateTime overlapStart = start.plusMinutes(30);
         LocalDateTime overlapEnd = overlapStart.plusHours(1);
-        assertThrows(IllegalStateException.class, () ->
-                bookingService.createBooking(userId, resource.getId(), new Timeslot(overlapStart, overlapEnd)));
+        assertThrows(IllegalStateException.class,
+                () -> bookingService.createBooking(userId, resource.getId(), new Timeslot(overlapStart, overlapEnd)));
     }
 }

@@ -5,7 +5,7 @@ import com.smartbooking.persistence.*;
 
 public class AppBootstrap {
     public static AppServices initialize() {
-        Database database = new Database("jdbc:sqlite:smart_booking.db");
+        Database database = new Database("jdbc:postgresql://localhost:5432/smart_booking", "postgres", "postgres");
         new DatabaseInitializer().initialize(database);
 
         UserRepository userRepository = new UserRepository(database);
